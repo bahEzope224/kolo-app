@@ -85,3 +85,9 @@ export const updateProfile   = (userId, data)     => api.put(`/users/${userId}`,
 export const getFinancials   = (userId)           => api.get(`/users/${userId}/summary`).then(r => r.data);
 export const removeMember    = (tontineId, memberId) => api.delete(`/members/${tontineId}/${memberId}`).then(r => r.data);
 export const joinByCode      = (code, userId)     => api.post(`/members/join/${code}?user_id=${userId}`).then(r => r.data);
+
+export const getTontineByCode = (code) =>
+  api.get(`/tontines/join/${code}`).then(r => r.data);
+
+export const onboarding = (data) =>
+  api.post("/users/onboarding", data).then(r => r.data);

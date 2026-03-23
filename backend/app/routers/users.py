@@ -114,3 +114,75 @@ def get_financial_summary(user_id: str, db: Session = Depends(get_db)):
         "active_tontines": active_memberships,
         "tontines": tontines_detail,
     }
+
+class OnboardingData(BaseModel):
+    name: str
+    phone: str
+    invite_code: str
+
+
+@router.post("/onboarding", summary="Créer compte et rejoindre une tontine en 1 étape")
+def onboarding(body: OnboardingData, db: Session = Depends(get_db)):
+    # 1. Trouve la tontine
+    from ..models.tontine import Tontine
+    from ..models.payment import TontineMember, Cycle, Payment
+
+    tontine = db.query(Tontine).filter(
+        Tontine.invite_code == body.invite_code.upper()
+    ).first()
+    if not tontine:
+        raise HTTPException(404, "Code d'invitation invalide")
+
+    # 2. Crée ou récupère l'utilisateur
+    user = db.query(User).filter(User.phone == body.phone).first()
+    if not user:
+        user = User(name=body.name.strip(), phone=body.phone.strip())
+        db.add(user)
+        db.flush()
+    else:
+        # Met à jour le nom si compte existant
+        user.name = body.name.strip()
+
+    # 3. Vérifie qu'il n'est pas déjà membre
+    existing = db.query(TontineMember).filter(
+        TontineMember.tontine_id == tontine.id,
+        TontineMember.user_id == user.id,
+    ).first()
+
+    if not existing:
+        # 4. Ajoute comme membre
+        member = TontineMember(
+            tontine_id=tontine.id,
+            user_id=user.id,
+            order_index=len(tontine.members) + 1,
+        )
+        db.add(member)
+        db.flush()
+
+        # 5. Crée le versement en attente
+        cycle = db.query(Cycle).filter(
+            Cycle.tontine_id == tontine.id,
+            Cycle.cycle_number == tontine.current_cycle,
+        ).first()
+        if cycle:
+            payment = Payment(
+                cycle_id=cycle.id,
+                member_id=user.id,
+                amount=tontine.contribution_amount,
+            )
+            db.add(payment)
+
+        # 6. Notifie le gérant
+        from ..services.notifications import notify_new_member
+        notify_new_member(db, str(tontine.manager_id), user.name, tontine.name)
+
+    db.commit()
+
+    return {
+        "message": f"Bienvenue dans {tontine.name} !",
+        "user_id": str(user.id),
+        "name": user.name,
+        "tontine_id": str(tontine.id),
+        "tontine_name": tontine.name,
+        "already_member": existing is not None,
+    }

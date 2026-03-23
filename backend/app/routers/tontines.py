@@ -10,7 +10,7 @@ from ..models.user import User
 from ..schemas.tontine import TontineCreate, TontineOut
 
 from ..models.payment import TontineMember, Cycle, Payment
-from ..models.user import User
+from ..models.user import User 
 
 router = APIRouter(prefix="/tontines", tags=["Tontines"])
 
@@ -79,7 +79,7 @@ def get_tontine(tontine_id: str, db: Session = Depends(get_db)):
     return tontine
 
 
-@router.get("/join/{code}", summary="Rejoindre via code d'invitation")
+@router.get("/join/{code}", summary="Info tontine par code d'invitation")
 def get_tontine_by_code(code: str, db: Session = Depends(get_db)):
     tontine = db.query(Tontine).filter(
         Tontine.invite_code == code.upper()
@@ -91,6 +91,7 @@ def get_tontine_by_code(code: str, db: Session = Depends(get_db)):
         "name": tontine.name,
         "contribution_amount": float(tontine.contribution_amount),
         "member_count": len(tontine.members),
+        "manager_name": tontine.manager.name,
     }
 
 @router.get("/{tontine_id}/dashboard", summary="Dashboard complet d'une tontine")

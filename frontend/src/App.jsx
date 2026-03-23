@@ -7,6 +7,7 @@ import Profile  from "./pages/Profile";
 import Landing  from "./pages/Landing";
 import BottomNav from "./components/BottomNav";
 import SideNav   from "./components/SideNav";
+import JoinPage from "./pages/JoinPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -31,6 +32,7 @@ function AppShell() {
         <Routes>
           <Route path="/login"          element={<Login />} />
           <Route path="/accueil"        element={<Landing />} />
+          <Route path="/join/:code" element={<JoinPage />} />
           <Route path="/"               element={<Protected><Dashboard /></Protected>} />
           <Route path="/tontine/:id"    element={<Protected><TontineDetail /></Protected>} />
           <Route path="/profile"        element={<Protected><Profile /></Protected>} />
