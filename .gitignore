@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# Node
+node_modules/
+dist/
+.env
+
+backend/.env.example
+
+# Divers
+.DS_Store
+*.log

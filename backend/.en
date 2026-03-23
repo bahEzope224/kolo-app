@@ -1,0 +1,12 @@
+DATABASE_URL=postgresql://kolo:kolo@localhost:5432/kolo
+SECRET_KEY=change-this-super-secret-key-32-chars-minimum
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
+# Twilio (créer un compte sur twilio.com)
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+33xxxxxxxxx
+
+# Environnement
+ENVIRONMENT=development
+CORS_ORIGINS=http://localhost:5173
