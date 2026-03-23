@@ -8,6 +8,8 @@ import AddPaymentModal from "../components/AddPaymentModal";
 import NotificationBell from "../components/NotificationBell";
 import { remindLateMembers } from "../api/client";
 import { removeMember } from "../api/client";
+
+import AppHeader from "../components/AppHeader";
 // ── Helpers ───────────────────────────────────────────────
 function initials(name) {
     return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -140,24 +142,17 @@ export default function TontineDetail() {
         <div className="min-h-screen bg-slate-50">
 
             {/* Header */}
-            <header className="bg-slate-900 text-white px-5 py-4 flex items-center gap-4 sticky top-0 z-10">
-                <button
-                    onClick={() => navigate("/")}
-                    className="text-slate-400 hover:text-white transition min-h-0 p-0 bg-transparent border-none text-xl"
-                >
-                    ←
-                </button>
-                <div className="flex-1 min-w-0">
-                    <div className="font-black text-base truncate">{data.name}</div>
-                    <div className="text-emerald-400 text-xs">Cycle {data.current_cycle}</div>
-                </div>
-                <NotificationBell userId={user?.id} />
-                {isGerant && (
-                    <span className="text-xs bg-emerald-600 text-white px-2 py-1 rounded-lg font-bold flex-shrink-0">
+            <AppHeader
+                title={data.name}
+                subtitle={`Cycle ${data.current_cycle}`}
+                back="/"
+                userId={user?.id}
+                right={isGerant && (
+                    <span className="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded-lg font-bold">
                         👑 Gérant
                     </span>
                 )}
-            </header>
+            />
 
             <main className="max-w-lg mx-auto px-4 py-6 space-y-5">
 

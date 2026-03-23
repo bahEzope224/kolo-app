@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { getMemberTontines } from "../api/client";
 import NotificationBell from "../components/NotificationBell";
 import api from "../api/client";
+import AppHeader from "../components/AppHeader";
 
 const getManagerTontines = (managerId) =>
   api.get(`/tontines/manager/${managerId}`).then((r) => r.data);
@@ -181,21 +182,34 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🌿</span>
-          <span className="font-black text-lg tracking-tight">Kolo</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-300 hidden sm:block"><button
-            onClick={() => navigate("/profile")}
-            className="text-sm text-slate-300 hover:text-white font-semibold transition min-h-0 p-0 bg-transparent border-none hidden sm:block"
-          >
-            {user?.name}
-          </button></span>
+      <header className="bg-slate-900 text-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-40">
+      
+
+        {/* Nom cliquable — caché sur mobile */}
+        <button
+          onClick={() => navigate("/profile")}
+          className="hidden sm:block text-sm text-slate-300 hover:text-white font-semibold transition min-h-0 p-0 bg-transparent border-none"
+        >
+          {user?.name}
+        </button>
+
+        {/* Actions droite */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <NotificationBell userId={user?.id} />
-          <button onClick={logout}
-            className="text-xs text-slate-400 underline min-h-0 py-1 px-0 bg-transparent border-none ml-1">
+
+          {/* Profil — visible sur mobile à la place du nom */}
+          <button
+            onClick={() => navigate("/profile")}
+            className="sm:hidden w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0"
+          >
+            {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
+          </button>
+
+          {/* Déconnexion — caché sur mobile, visible desktop */}
+          <button
+            onClick={logout}
+            className="hidden sm:block text-xs text-slate-400 hover:text-white underline min-h-0 py-1 px-0 bg-transparent border-none ml-1 transition"
+          >
             Déconnexion
           </button>
         </div>

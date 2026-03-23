@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProfile, updateProfile, getFinancials, joinByCode } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
 import NotificationBell from "../components/NotificationBell";
+import AppHeader from "../components/AppHeader";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -63,12 +64,7 @@ export default function Profile() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="bg-slate-900 text-white px-5 py-4 flex items-center gap-4 sticky top-0 z-10">
-        <button onClick={() => navigate("/")}
-          className="text-slate-400 hover:text-white transition min-h-0 p-0 bg-transparent border-none text-xl">
-          ←
-        </button>
-        <span className="font-black text-base flex-1">Mon profil</span>
-        <NotificationBell userId={user?.id} />
+      <AppHeader title="Mon profil" back="/" userId={user?.id} />
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-5">
