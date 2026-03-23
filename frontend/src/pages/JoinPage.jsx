@@ -24,15 +24,13 @@ export default function JoinPage() {
   }, [code]);
 
   async function handleJoin() {
-    if (!name.trim())       { setError("Entre ton prénom et nom"); return; }
-    if (phone.length < 8)   { setError("Entre ton numéro de téléphone"); return; }
+    if (!name.trim())     { setError("Entre ton prénom et nom"); return; }
+    if (phone.length < 8) { setError("Entre ton numéro de téléphone"); return; }
     setLoading(true);
     setError("");
     try {
-      // 1. Crée le compte + rejoint la tontine
       await onboarding({ name, phone, invite_code: code });
-      // 2. Envoie le code OTP
-      await requestOtp({ phone });
+      await requestOtp(phone);        // ← phone directement, pas un objet
       setStep("code");
     } catch (e) {
       setError(e.response?.data?.detail || "Une erreur est survenue");
@@ -46,7 +44,7 @@ export default function JoinPage() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await verifyOtp({ phone, code: otp });
+      const { data } = await verifyOtp(phone, otp);   // ← deux params séparés
       localStorage.setItem("kolo_token", data.access_token);
       localStorage.setItem("kolo_user", JSON.stringify({
         id: data.user_id,
