@@ -7,7 +7,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.database import Base
 from app.models import user, tontine, payment, notification  # noqa: F401
+
 config = context.config
+
+# ← Force l'URL depuis la variable d'environnement
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
