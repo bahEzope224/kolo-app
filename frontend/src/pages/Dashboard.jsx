@@ -182,130 +182,136 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-slate-900 text-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-40">
-      
 
         {/* Nom cliquable — caché sur mobile */}
-        <button
-          onClick={() => navigate("/profile")}
-          className="hidden sm:block text-sm text-slate-300 hover:text-white font-semibold transition min-h-0 p-0 bg-transparent border-none"
-        >
-          {user?.name}
-        </button>
+        <header className="bg-slate-900 text-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-40">
+          {/* Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xl">🌿</span>
+            <span className="font-black text-base tracking-tight">Kolo</span>
+          </div>
 
-        {/* Actions droite */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <NotificationBell userId={user?.id} />
-
-          {/* Profil — visible sur mobile à la place du nom */}
+          {/* Nom cliquable — caché sur mobile */}
           <button
             onClick={() => navigate("/profile")}
-            className="sm:hidden w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0"
+            className="hidden sm:block text-sm text-slate-300 hover:text-white font-semibold transition min-h-0 p-0 bg-transparent border-none"
           >
-            {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
+            {user?.name}
           </button>
 
-          {/* Déconnexion — caché sur mobile, visible desktop */}
-          <button
-            onClick={logout}
-            className="hidden sm:block text-xs text-slate-400 hover:text-white underline min-h-0 py-1 px-0 bg-transparent border-none ml-1 transition"
-          >
-            Déconnexion
-          </button>
-        </div>
-      </header>
+          {/* Actions droite */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <NotificationBell userId={user?.id} />
 
-      <main className="max-w-lg mx-auto px-4 py-8 space-y-6">
+            {/* Profil — visible sur mobile à la place du nom */}
+            <button
+              onClick={() => navigate("/profile")}
+              className="sm:hidden w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0"
+            >
+              {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
+            </button>
 
-        {/* Succès création */}
-        {created && (
-          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-5">
-            <div className="text-2xl mb-2">🎉</div>
-            <div className="font-black text-emerald-800 text-lg">{created.name} créée !</div>
-            <div className="text-emerald-700 text-sm mt-1">
-              Code :{" "}
-              <span className="font-mono font-black text-lg tracking-widest bg-white px-3 py-1 rounded-lg border border-emerald-200">
-                {created.invite_code}
-              </span>
-            </div>
-            <p className="text-emerald-600 text-xs mt-2">Partage ce code à tes membres.</p>
+            {/* Déconnexion — caché sur mobile, visible desktop */}
+            <button
+              onClick={logout}
+              className="hidden sm:block text-xs text-slate-400 hover:text-white underline min-h-0 py-1 px-0 bg-transparent border-none ml-1 transition"
+            >
+              Déconnexion
+            </button>
           </div>
-        )}
+        </header>
 
-        {isLoading ? (
-          <div className="text-center py-16 text-slate-400 text-sm">Chargement…</div>
-        ) : (
-          <>
-            {/* ── Section : Mes tontines (gérant) ── */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-black text-slate-800 text-xl">Mes tontines</h2>
-                <button
-                  onClick={() => { setShowForm(!showForm); setCreated(null); }}
-                  className={`text-sm font-bold px-4 py-2 rounded-xl transition min-h-0 ${showForm ? "bg-slate-200 text-slate-700" : "bg-emerald-500 hover:bg-emerald-600 text-white"
-                    }`}
-                >
-                  {showForm ? "✕ Annuler" : "+ Nouvelle"}
-                </button>
+        <main className="max-w-lg mx-auto px-4 py-8 space-y-6">
+
+          {/* Succès création */}
+          {created && (
+            <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-5">
+              <div className="text-2xl mb-2">🎉</div>
+              <div className="font-black text-emerald-800 text-lg">{created.name} créée !</div>
+              <div className="text-emerald-700 text-sm mt-1">
+                Code :{" "}
+                <span className="font-mono font-black text-lg tracking-widest bg-white px-3 py-1 rounded-lg border border-emerald-200">
+                  {created.invite_code}
+                </span>
               </div>
+              <p className="text-emerald-600 text-xs mt-2">Partage ce code à tes membres.</p>
+            </div>
+          )}
 
-              {showForm && (
-                <div className="mb-6">
-                  <CreateTontineForm managerId={user?.id} onSuccess={handleCreated} />
-                </div>
-              )}
-
-              {myTontines.length === 0 && !showForm ? (
-                <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200">
-                  <div className="text-4xl mb-3">🌱</div>
-                  <p className="text-slate-500 font-medium text-sm">Aucune tontine créée</p>
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400 text-sm">Chargement…</div>
+          ) : (
+            <>
+              {/* ── Section : Mes tontines (gérant) ── */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-black text-slate-800 text-xl">Mes tontines</h2>
                   <button
-                    onClick={() => setShowForm(true)}
-                    className="mt-3 text-emerald-600 text-sm font-bold underline bg-transparent border-none min-h-0"
+                    onClick={() => { setShowForm(!showForm); setCreated(null); }}
+                    className={`text-sm font-bold px-4 py-2 rounded-xl transition min-h-0 ${showForm ? "bg-slate-200 text-slate-700" : "bg-emerald-500 hover:bg-emerald-600 text-white"
+                      }`}
                   >
-                    Créer ma première tontine
+                    {showForm ? "✕ Annuler" : "+ Nouvelle"}
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {myTontines.map((t) => (
-                    <TontineCard key={t.id} tontine={t} onClick={() => navigate(`/tontine/${t.id}`)} />
-                  ))}
+
+                {showForm && (
+                  <div className="mb-6">
+                    <CreateTontineForm managerId={user?.id} onSuccess={handleCreated} />
+                  </div>
+                )}
+
+                {myTontines.length === 0 && !showForm ? (
+                  <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200">
+                    <div className="text-4xl mb-3">🌱</div>
+                    <p className="text-slate-500 font-medium text-sm">Aucune tontine créée</p>
+                    <button
+                      onClick={() => setShowForm(true)}
+                      className="mt-3 text-emerald-600 text-sm font-bold underline bg-transparent border-none min-h-0"
+                    >
+                      Créer ma première tontine
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {myTontines.map((t) => (
+                      <TontineCard key={t.id} tontine={t} onClick={() => navigate(`/tontine/${t.id}`)} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Section : Tontines rejointes (membre) ── */}
+              {joinedTontines.length > 0 && (
+                <div>
+                  <h2 className="font-black text-slate-800 text-xl mb-4">Tontines rejointes</h2>
+                  <div className="space-y-3">
+                    {joinedTontines.map((t) => (
+                      <TontineCard key={t.id} tontine={t} onClick={() => navigate(`/tontine/${t.id}`)} />
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
 
-            {/* ── Section : Tontines rejointes (membre) ── */}
-            {joinedTontines.length > 0 && (
-              <div>
-                <h2 className="font-black text-slate-800 text-xl mb-4">Tontines rejointes</h2>
-                <div className="space-y-3">
-                  {joinedTontines.map((t) => (
-                    <TontineCard key={t.id} tontine={t} onClick={() => navigate(`/tontine/${t.id}`)} />
-                  ))}
+              {/* État vide total */}
+              {tontines.length === 0 && !showForm && (
+                <div className="text-center py-16">
+                  <div className="text-5xl mb-4">🌿</div>
+                  <p className="text-slate-600 font-bold text-lg">Bienvenue sur Kolo !</p>
+                  <p className="text-slate-400 text-sm mt-2 mb-6">
+                    Crée une tontine ou rejoins-en une avec un code d'invitation.
+                  </p>
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-8 py-4 rounded-xl text-base transition"
+                  >
+                    + Créer une tontine
+                  </button>
                 </div>
-              </div>
-            )}
-
-            {/* État vide total */}
-            {tontines.length === 0 && !showForm && (
-              <div className="text-center py-16">
-                <div className="text-5xl mb-4">🌿</div>
-                <p className="text-slate-600 font-bold text-lg">Bienvenue sur Kolo !</p>
-                <p className="text-slate-400 text-sm mt-2 mb-6">
-                  Crée une tontine ou rejoins-en une avec un code d'invitation.
-                </p>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-8 py-4 rounded-xl text-base transition"
-                >
-                  + Créer une tontine
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </main>
+              )}
+            </>
+          )}
+        </main>
     </div>
   );
 }
