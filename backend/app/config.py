@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     twilio_phone_number: Optional[str] = None
 
     environment: str = "development"
-    cors_origins: str = "http://localhost:5173", "https://kolo-app-two.vercel.app/"
+    cors_origins: str = "https://kolo-app-two.vercel.app/"
 
     class Config:
         env_file = ".env"
