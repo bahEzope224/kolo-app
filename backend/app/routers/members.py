@@ -62,7 +62,7 @@ def invite_member(tontine_id: str, body: MemberInvite, db: Session = Depends(get
     return {
         "message": f"{body.name} ajouté(e) avec succès",
         "user_id": str(user.id),
-        "invite_link": f"https://kolo.app/join/{tontine.invite_code}",
+        "invite_link": f"https://kolo-app-two.vercel.app/join/{tontine.invite_code}",
     }
 
 

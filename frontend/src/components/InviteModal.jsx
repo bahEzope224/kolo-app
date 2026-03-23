@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { inviteMember } from "../api/client";
 
+const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
 export default function InviteModal({ tontineId, inviteCode, onClose }) {
   const qc = useQueryClient();
   const [tab, setTab] = useState("form"); // "form" | "code"
@@ -35,11 +36,10 @@ export default function InviteModal({ tontineId, inviteCode, onClose }) {
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(`https://kolo.app/join/${inviteCode}`);
+    navigator.clipboard.writeText(`https://kolo-app-two.vercel.app/join/${inviteCode}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
-
   return (
     // Fond sombre
     <div
@@ -174,7 +174,7 @@ export default function InviteModal({ tontineId, inviteCode, onClose }) {
 
               {/* WhatsApp */}
               <a
-                href={`https://wa.me/?text=Rejoins%20notre%20tontine%20sur%20Kolo%20!%20Code%20d'invitation%20:%20${inviteCode}`}
+                href={`https://wa.me/?text=Rejoins%20ma%20tontine%20sur%20Kolo%20!%0ALien%20:%20https://kolo-app-two.vercel.app/join/${inviteCode}%0ACode%20:%20${inviteCode}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition"
