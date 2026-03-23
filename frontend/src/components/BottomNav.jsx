@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 const TABS = [
   { path: "/",        icon: "📊", label: "Dashboard" },
   { path: "/profile", icon: "👤", label: "Profil"    },
-  { path: "/accueil", icon: "🌍", label: "Landing"   },
 ];
 
 export default function BottomNav() {
