@@ -5,8 +5,9 @@ const api = axios.create({
   timeout: 10000,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("kolo_token");
+aapi.interceptors.request.use((config) => {
+  const token = localStorage.getItem("kolo_token") ||
+                sessionStorage.getItem("kolo_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -16,6 +17,7 @@ api.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem("kolo_token");
+      sessionStorage.removeItem("kolo_token");
       window.location.href = "/login";
     }
     return Promise.reject(err);

@@ -2,6 +2,8 @@
     "name": "Kolo — Tontine collective",
     "short_name": "Kolo",
     "description": "Gère ta tontine en toute transparence",
+    "id": "/",
+    "scope": "/",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#065F46",

@@ -26,9 +26,18 @@ export function useAuth() {
     setError("");
     try {
       const { data } = await verifyOtp(phone, code);
-      localStorage.setItem("kolo_token", data.access_token);
-      localStorage.setItem("kolo_user", JSON.stringify({ id: data.user_id, name: data.name }));
-      navigate("/");
+      // Sauvegarde dans localStorage ET sessionStorage (fallback PWA)
+      const token = data.access_token;
+      const user = JSON.stringify({ id: data.user_id, name: data.name });
+      try {
+        localStorage.setItem("kolo_token", token);
+        localStorage.setItem("kolo_user", user);
+      } catch (e) {
+        sessionStorage.setItem("kolo_token", token);
+        sessionStorage.setItem("kolo_user", user);
+      }
+      // Force navigation + reload pour PWA
+      window.location.href = "/";
       return true;
     } catch (e) {
       setError("Code incorrect ou expiré. Réessaie.");
@@ -41,13 +50,25 @@ export function useAuth() {
   const logout = () => {
     localStorage.removeItem("kolo_token");
     localStorage.removeItem("kolo_user");
-    navigate("/login");
+    sessionStorage.removeItem("kolo_token");
+    sessionStorage.removeItem("kolo_user");
+    window.location.href = "/login";
   };
 
   const getUser = () => {
-    const raw = localStorage.getItem("kolo_user");
-    return raw ? JSON.parse(raw) : null;
+    try {
+      const raw = localStorage.getItem("kolo_user") ||
+                  sessionStorage.getItem("kolo_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   };
 
-  return { sendCode, verifyCode, logout, getUser, loading, error, setError };
+  const getToken = () => {
+    return localStorage.getItem("kolo_token") ||
+           sessionStorage.getItem("kolo_token");
+  };
+
+  return { sendCode, verifyCode, logout, getUser, getToken, loading, error, setError };
 }

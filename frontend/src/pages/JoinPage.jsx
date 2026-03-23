@@ -44,16 +44,17 @@ export default function JoinPage() {
     setLoading(true);
     setError("");
     try {
-      const { data } = await verifyOtp(phone, otp);   // ← deux params séparés
-      localStorage.setItem("kolo_token", data.access_token);
-      localStorage.setItem("kolo_user", JSON.stringify({
-        id: data.user_id,
-        name: data.name,
-      }));
-      setStep("done");
-      setTimeout(() => navigate("/"), 2000);
-    } catch (e) {
-      setError("Code incorrect ou expiré. Réessaie.");
+        const token = data.access_token;
+        const user = JSON.stringify({ id: data.user_id, name: data.name });
+        try {
+          localStorage.setItem("kolo_token", token);
+          localStorage.setItem("kolo_user", user);
+        } catch (e) {
+          sessionStorage.setItem("kolo_token", token);
+          sessionStorage.setItem("kolo_user", user);
+        }
+        setStep("done");
+        setTimeout(() => { window.location.href = "/"; }, 2000);
     } finally {
       setLoading(false);
     }

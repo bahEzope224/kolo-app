@@ -14,7 +14,9 @@ const queryClient = new QueryClient({
 });
 
 function Protected({ children }) {
-  return localStorage.getItem("kolo_token") ? children : <Navigate to="/login" replace />;
+  const token = localStorage.getItem("kolo_token") ||
+                sessionStorage.getItem("kolo_token");
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 function AppShell() {
