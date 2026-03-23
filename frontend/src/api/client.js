@@ -5,7 +5,7 @@ const api = axios.create({
   timeout: 10000,
 });
 
-aapi.interceptors.request.use((config) => {
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem("kolo_token") ||
                 sessionStorage.getItem("kolo_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
