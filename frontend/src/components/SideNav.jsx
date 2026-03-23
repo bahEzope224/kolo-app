@@ -14,7 +14,6 @@ export default function SideNav() {
 
   return (
     <aside className="hidden md:flex flex-col w-56 bg-slate-900 min-h-screen sticky top-0 shrink-0">
-
       {/* User pill */}
       <div className="mx-3 mt-4 mb-2 bg-slate-800 rounded-xl px-3 py-3 flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs flex-shrink-0">

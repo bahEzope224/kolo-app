@@ -26,11 +26,6 @@ export default function AppHeader({ title, subtitle, back, tontineName, userId, 
           {tontineName}
         </div>
       )}
-
-      <div className="ml-auto flex items-center gap-2">
-        {right}
-        {userId && <NotificationBell userId={userId} />}
-      </div>
     </header>
   );
 }
