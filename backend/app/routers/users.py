@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models.user import User
 from ..models.payment import TontineMember, Payment, Cycle
 from ..models.tontine import Tontine
+from sqlalchemy import func
 
 router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 
@@ -30,6 +31,29 @@ def create_user(body: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     return {"message": "Compte créé", "user_id": str(user.id), "name": user.name}
 
+
+# 1. D'ABORD la route admin
+@router.get("/admin/stats", summary="Statistiques générales")
+def get_admin_stats(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    from ..models.tontine import Tontine
+    from ..models.payment import Payment, TontineMember
+
+    total_users    = db.query(User).count()
+    total_tontines = db.query(Tontine).count()
+    total_members  = db.query(TontineMember).count()
+    total_payments = db.query(Payment).filter(Payment.is_validated == True).count()
+    total_amount   = db.query(Payment).filter(
+        Payment.is_validated == True
+    ).with_entities(func.sum(Payment.amount)).scalar() or 0
+
+    return {
+        "total_users":    total_users,
+        "total_tontines": total_tontines,
+        "total_members":  total_members,
+        "total_payments": total_payments,
+        "total_amount":   float(total_amount),
+    }
 
 @router.get("/{user_id}", summary="Profil utilisateur")
 def get_profile(user_id: str, db: Session = Depends(get_db)):
@@ -185,4 +209,82 @@ def onboarding(body: OnboardingData, db: Session = Depends(get_db)):
         "tontine_id": str(tontine.id),
         "tontine_name": tontine.name,
         "already_member": existing is not None,
+    }
+
+
+class WelcomeMessage(BaseModel):
+    message: str
+
+@router.put("/{user_id}/avatar", summary="Changer la photo de profil (URL ou emoji)")
+def update_avatar(user_id: str, avatar: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "Utilisateur introuvable")
+    user.avatar = avatar
+    db.commit()
+    return {"message": "Avatar mis à jour", "avatar": avatar}
+
+
+@router.delete("/{user_id}", summary="Supprimer son compte")
+def delete_account(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "Utilisateur introuvable")
+    # Vérifie qu'il n'est pas gérant d'une tontine active
+    from ..models.tontine import Tontine
+    managed = db.query(Tontine).filter(Tontine.manager_id == user_id).first()
+    if managed:
+        raise HTTPException(400, "Tu es gérant d'une tontine. Transfère la gestion avant de supprimer ton compte.")
+    db.delete(user)
+    db.commit()
+    return {"message": "Compte supprimé"}
+
+
+class WelcomeMessage(BaseModel):
+    message: str
+
+@router.put("/{user_id}/avatar", summary="Changer la photo de profil (URL ou emoji)")
+def update_avatar(user_id: str, avatar: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "Utilisateur introuvable")
+    user.avatar = avatar
+    db.commit()
+    return {"message": "Avatar mis à jour", "avatar": avatar}
+
+
+@router.delete("/{user_id}", summary="Supprimer son compte")
+def delete_account(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "Utilisateur introuvable")
+    # Vérifie qu'il n'est pas gérant d'une tontine active
+    from ..models.tontine import Tontine
+    managed = db.query(Tontine).filter(Tontine.manager_id == user_id).first()
+    if managed:
+        raise HTTPException(400, "Tu es gérant d'une tontine. Transfère la gestion avant de supprimer ton compte.")
+    db.delete(user)
+    db.commit()
+    return {"message": "Compte supprimé"}
+
+@router.get("/admin/stats", summary="Statistiques générales")
+def get_admin_stats(db: Session = Depends(get_db)):
+    from ..models.tontine import Tontine
+    from ..models.payment import Payment, TontineMember
+
+    total_users    = db.query(User).count()
+    total_tontines = db.query(Tontine).count()
+    total_members  = db.query(TontineMember).count()
+    total_payments = db.query(Payment).filter(Payment.is_validated == True).count()
+    total_amount   = db.query(Payment).filter(
+        Payment.is_validated == True
+    ).with_entities(func.sum(Payment.amount)).scalar() or 0
+
+    from sqlalchemy import func
+    return {
+        "total_users":    total_users,
+        "total_tontines": total_tontines,
+        "total_members":  total_members,
+        "total_payments": total_payments,
+        "total_amount":   float(total_amount),
     }

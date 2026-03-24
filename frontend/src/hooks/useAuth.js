@@ -28,7 +28,7 @@ export function useAuth() {
       const { data } = await verifyOtp(phone, code);
       // Sauvegarde dans localStorage ET sessionStorage (fallback PWA)
       const token = data.access_token;
-      const user = JSON.stringify({ id: data.user_id, name: data.name });
+      const user = JSON.stringify({ id: data.user_id, name: data.name, phone: phone });
       try {
         localStorage.setItem("kolo_token", token);
         localStorage.setItem("kolo_user", user);

@@ -1,19 +1,32 @@
 import { useNavigate, useLocation } from "react-router-dom";
 
-const TABS = [
-  { path: "/",        icon: "📊", label: "Dashboard" },
-  { path: "/profile", icon: "👤", label: "Profil"    },
-];
+const ADMIN_PHONE = "+33749404145";
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const user = JSON.parse(
+    localStorage.getItem("kolo_user") ||
+    sessionStorage.getItem("kolo_user") ||
+    "{}"
+  );
+  const isAdmin = user?.phone === ADMIN_PHONE;
+
+  const TABS = [
+    { path: "/",        icon: "📊", label: "Dashboard" },
+    { path: "/profile", icon: "👤", label: "Profil"    },
+    ...(isAdmin ? [{ path: "/admin", icon: "📈", label: "Admin" }] : []),
+  ];
+
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50"
-         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-50"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       {TABS.map(t => {
-        const active = location.pathname === t.path ||
+        const active =
+          location.pathname === t.path ||
           (t.path !== "/" && location.pathname.startsWith(t.path));
         return (
           <button

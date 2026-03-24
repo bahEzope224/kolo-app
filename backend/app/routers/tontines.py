@@ -11,7 +11,8 @@ from ..schemas.tontine import TontineCreate, TontineOut
 
 from ..models.payment import TontineMember, Cycle, Payment
 from ..models.user import User 
-
+from typing import Optional
+from pydantic import BaseModel
 router = APIRouter(prefix="/tontines", tags=["Tontines"])
 
 
@@ -172,6 +173,9 @@ def get_tontine_dashboard(tontine_id: str, db: Session = Depends(get_db)):
         "members": members_data,
         "history": history,
         "cycle_id": str(cycle.id) if cycle else None,
+        "welcome_message":        tontine.welcome_message,
+        "payment_day":            tontine.payment_day,
+        "show_next_beneficiary":  tontine.show_next_beneficiary,
     }
 
 
@@ -214,3 +218,28 @@ def get_member_tontines(user_id: str, db: Session = Depends(get_db)):
         })
 
     return result
+
+
+class TontineSettings(BaseModel):
+    welcome_message: Optional[str] = None
+    show_next_beneficiary: Optional[bool] = None
+    payment_day: Optional[int] = None  # jour du mois (1-28)
+
+
+
+
+@router.put("/{tontine_id}/settings", summary="Paramètres de la tontine")
+def update_tontine_settings(tontine_id: str, body: TontineSettings, db: Session = Depends(get_db)):
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(404, "Tontine introuvable")
+    if body.welcome_message is not None:
+        tontine.welcome_message = body.welcome_message
+    if body.show_next_beneficiary is not None:
+        tontine.show_next_beneficiary = body.show_next_beneficiary
+    if body.payment_day is not None:
+        if not 1 <= body.payment_day <= 28:
+            raise HTTPException(400, "Le jour doit être entre 1 et 28")
+        tontine.payment_day = body.payment_day
+    db.commit()
+    return {"message": "Paramètres mis à jour"}

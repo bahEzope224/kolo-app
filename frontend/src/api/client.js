@@ -93,3 +93,15 @@ export const getTontineByCode = (code) =>
 
 export const onboarding = (data) =>
   api.post("/users/onboarding", data).then(r => r.data);
+
+export const updateAvatar       = (userId, avatar) =>
+  api.put(`/users/${userId}/avatar?avatar=${encodeURIComponent(avatar)}`).then(r => r.data);
+
+export const deleteAccount      = (userId) =>
+  api.delete(`/users/${userId}`).then(r => r.data);
+
+export const updateTontineSettings = (tontineId, data) =>
+  api.put(`/tontines/${tontineId}/settings`, data).then(r => r.data);
+
+export const getAdminStats = () =>
+  api.get("/admin/stats").then(r => r.data);

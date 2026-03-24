@@ -1,23 +1,32 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
-const LINKS = [
-  { path: "/",        icon: "📊", label: "Dashboard"  },
-  { path: "/profile", icon: "👤", label: "Mon profil" },
-];
+const ADMIN_PHONE = "+33749404145";
 
 export default function SideNav() {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { logout, getUser } = useAuth();
   const user = getUser();
 
+  const isAdmin = user?.phone === ADMIN_PHONE;
+
+  const LINKS = [
+    { path: "/",        icon: "📊", label: "Dashboard"  },
+    { path: "/profile", icon: "👤", label: "Mon profil" },
+    ...(isAdmin ? [{ path: "/admin", icon: "📈", label: "Admin" }] : []),
+  ];
+
   return (
     <aside className="hidden md:flex flex-col w-56 bg-slate-900 min-h-screen sticky top-0 shrink-0">
-      {/* User pill */}
+      <div className="flex items-center gap-2 px-5 py-6 border-b border-slate-800">
+        <span className="text-2xl">🌿</span>
+        <span className="font-black text-white text-lg">Kolo</span>
+      </div>
+
       <div className="mx-3 mt-4 mb-2 bg-slate-800 rounded-xl px-3 py-3 flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs flex-shrink-0">
-          {user?.name?.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() || "??"}
+          {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
         </div>
         <div className="min-w-0">
           <div className="text-white font-bold text-xs truncate">{user?.name || "Utilisateur"}</div>
@@ -25,7 +34,6 @@ export default function SideNav() {
         </div>
       </div>
 
-      {/* Nav links */}
       <nav className="flex-1 px-3 py-2 space-y-1">
         {LINKS.map(l => (
           <button
@@ -43,7 +51,6 @@ export default function SideNav() {
         ))}
       </nav>
 
-      {/* Logout */}
       <div className="px-3 py-4 border-t border-slate-800">
         <button
           onClick={logout}

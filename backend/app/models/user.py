@@ -15,3 +15,4 @@ class User(Base):
     otp_code = Column(String(6), nullable=True)
     otp_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+    avatar = Column(String(200), nullable=True, default="🌿")

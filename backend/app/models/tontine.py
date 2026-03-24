@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, Numeric, String, DateTime
+from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, Numeric, String, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -29,3 +29,6 @@ class Tontine(Base):
     manager = relationship("User", foreign_keys=[manager_id])
     members = relationship("TontineMember", back_populates="tontine")
     cycles = relationship("Cycle", back_populates="tontine")
+    welcome_message      = Column(String(300), nullable=True)
+    show_next_beneficiary = Column(Boolean, default=False)
+    payment_day          = Column(Integer, default=1)
