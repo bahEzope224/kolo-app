@@ -50,8 +50,12 @@ export const getTontineDashboard = (tontineId) =>
   api.get(`/tontines/${tontineId}/dashboard`).then((r) => r.data);
 
 
-export const drawBeneficiary = (tontineId) =>
-  api.post(`/payments/tontine/${tontineId}/draw`).then((r) => r.data);
+export const drawBeneficiary = (tontineId, memberId = null) => {
+  const url = memberId
+    ? `/payments/tontine/${tontineId}/draw?member_id=${memberId}`
+    : `/payments/tontine/${tontineId}/draw`;
+  return api.post(url).then(r => r.data);
+};
 
 export const closeCycle = (tontineId) =>
   api.post(`/payments/tontine/${tontineId}/close-cycle`).then((r) => r.data);

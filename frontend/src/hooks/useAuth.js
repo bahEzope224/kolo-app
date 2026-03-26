@@ -9,18 +9,18 @@ export function useAuth() {
 
   const sendCode = async (phone) => {
     setLoading(true);
-    setError("");
     try {
       await requestOtp(phone);
-      return true;
+      return { success: true };
     } catch (e) {
-      setError(e.response?.data?.detail || "Numéro non reconnu. Contacte ton gérant.");
-      return false;
+      const status  = e.response?.status;
+      const message = e.response?.data?.detail || "Erreur de connexion";
+      // Ne pas appeler setError ici — laisser Login.jsx gérer
+      return { success: false, status, message };
     } finally {
       setLoading(false);
     }
   };
-
   const verifyCode = async (phone, code) => {
     setLoading(true);
     setError("");

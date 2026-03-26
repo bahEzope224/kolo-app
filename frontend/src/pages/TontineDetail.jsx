@@ -13,9 +13,9 @@ function initials(name) {
 }
 
 const STATUS = {
-  paid:    { label: "Payé ✓",     bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
-  pending: { label: "En attente", bg: "bg-amber-100",   text: "text-amber-800",   dot: "bg-amber-400"   },
-  missing: { label: "Non inscrit",bg: "bg-slate-100",   text: "text-slate-500",   dot: "bg-slate-300"   },
+  paid: { label: "Payé ✓", bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+  pending: { label: "En attente", bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-400" },
+  missing: { label: "Non inscrit", bg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-300" },
 };
 
 function Badge({ status }) {
@@ -30,7 +30,7 @@ function Badge({ status }) {
 
 function Avatar({ name, status }) {
   const colors = {
-    paid:    "bg-emerald-100 text-emerald-700",
+    paid: "bg-emerald-100 text-emerald-700",
     pending: "bg-amber-100 text-amber-700",
     missing: "bg-slate-100 text-slate-500",
   };
@@ -58,18 +58,18 @@ function ProgressBar({ paid, total }) {
 }
 
 export default function TontineDetail() {
-  const { id }   = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const qc       = useQueryClient();
+  const qc = useQueryClient();
 
-  const [tab, setTab]               = useState("membres");
+  const [tab, setTab] = useState("membres");
   const [copiedCode, setCopiedCode] = useState(false);
-  const [toast, setToast]           = useState("");
+  const [toast, setToast] = useState("");
   const [showInvite, setShowInvite] = useState(false);
-  const [showDraw, setShowDraw]     = useState(false);
+  const [showDraw, setShowDraw] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
-  const [showSettings, setShowSettings]     = useState(false);
-  const [search, setSearch]         = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [search, setSearch] = useState("");
 
   const user = JSON.parse(
     localStorage.getItem("kolo_user") ||
@@ -78,26 +78,26 @@ export default function TontineDetail() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["tontine", id],
-    queryFn:  () => getTontineDashboard(id),
+    queryFn: () => getTontineDashboard(id),
     refetchInterval: 10000,
   });
 
   const validateMutation = useMutation({
     mutationFn: (paymentId) => validatePayment(paymentId),
-    onSuccess:  () => { qc.invalidateQueries(["tontine", id]); showToast("Versement validé ✓"); },
-    onError:    () => showToast("Erreur lors de la validation"),
+    onSuccess: () => { qc.invalidateQueries(["tontine", id]); showToast("Versement validé ✓"); },
+    onError: () => showToast("Erreur lors de la validation"),
   });
 
   const remindMutation = useMutation({
     mutationFn: () => remindLateMembers(id),
-    onSuccess:  (data) => { showToast(data.message); qc.invalidateQueries(["notifs"]); },
-    onError:    () => showToast("Erreur lors de l'envoi des rappels"),
+    onSuccess: (data) => { showToast(data.message); qc.invalidateQueries(["notifs"]); },
+    onError: () => showToast("Erreur lors de l'envoi des rappels"),
   });
 
   const removeMutation = useMutation({
     mutationFn: (memberId) => removeMember(id, memberId),
-    onSuccess:  () => { qc.invalidateQueries(["tontine", id]); showToast("Membre retiré"); },
-    onError:    (e) => showToast(e.response?.data?.detail || "Erreur"),
+    onSuccess: () => { qc.invalidateQueries(["tontine", id]); showToast("Membre retiré"); },
+    onError: (e) => showToast(e.response?.data?.detail || "Erreur"),
   });
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 3000); }
@@ -199,9 +199,8 @@ export default function TontineDetail() {
               {data.invite_code}
             </div>
             <button onClick={copyCode}
-              className={`w-full px-3 py-2 rounded-xl text-xs font-bold transition min-h-0 ${
-                copiedCode ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-              }`}>
+              className={`w-full px-3 py-2 rounded-xl text-xs font-bold transition min-h-0 ${copiedCode ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                }`}>
               {copiedCode ? "✓ Copié !" : "📋 Copier"}
             </button>
           </div>
@@ -268,9 +267,8 @@ export default function TontineDetail() {
           <div className="flex border-b border-slate-100">
             {["membres", "historique"].map((t) => (
               <button key={t} onClick={() => setTab(t)}
-                className={`flex-1 py-3 text-sm font-bold transition capitalize min-h-0 border-none rounded-none ${
-                  tab === t ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50" : "text-slate-400 hover:text-slate-600 bg-white"
-                }`}>
+                className={`flex-1 py-3 text-sm font-bold transition capitalize min-h-0 border-none rounded-none ${tab === t ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50" : "text-slate-400 hover:text-slate-600 bg-white"
+                  }`}>
                 {t === "membres" ? `👥 Membres (${data.member_count})` : "📋 Historique"}
               </button>
             ))}
@@ -281,7 +279,7 @@ export default function TontineDetail() {
               <div className="px-4 py-3 border-b border-slate-50">
                 <input type="text" placeholder="Rechercher un membre…" value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-400 transition"/>
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-400 transition" />
               </div>
               <div className="divide-y divide-slate-50">
                 {filteredMembers.length === 0 ? (
@@ -355,13 +353,18 @@ export default function TontineDetail() {
 
       {showInvite && <InviteModal tontineId={id} inviteCode={data.invite_code} onClose={() => setShowInvite(false)} />}
       {showDraw && (
-        <DrawModal tontineId={id} members={data.members}
+        <DrawModal
+          tontineId={id}
+          members={data.members}
           currentBeneficiary={data.beneficiary ? {
             beneficiary_name: data.beneficiary.name,
             beneficiary_phone: data.beneficiary.phone,
             total_amount: data.total_amount,
           } : null}
-          cycleNumber={data.current_cycle} onClose={() => setShowDraw(false)} />
+          cycleNumber={data.current_cycle}
+          mode={data.mode}
+          onClose={() => setShowDraw(false)}
+        />
       )}
       {showAddPayment && (
         <AddPaymentModal tontineId={id} members={data.members}

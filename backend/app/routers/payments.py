@@ -1,7 +1,9 @@
 import random
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session 
+from typing import Optional
+
 
 from ..database import get_db
 from ..models.payment import Cycle, Payment, TontineMember
@@ -49,8 +51,13 @@ async def validate_payment(payment_id: str, db: Session = Depends(get_db)):
     return {"message": "Versement validé", "payment_id": str(payment.id)}
 
 
-@router.post("/tontine/{tontine_id}/draw", summary="Tirage au sort équitable")
-def draw_beneficiary(tontine_id: str, db: Session = Depends(get_db)):
+@router.post("/tontine/{tontine_id}/draw", summary="Désigner le bénéficiaire")
+def draw_beneficiary(
+    tontine_id: str,
+    member_id: Optional[str] = None,   # pour mode manuel
+    db: Session = Depends(get_db)
+):
+    from typing import Optional
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
@@ -61,27 +68,6 @@ def draw_beneficiary(tontine_id: str, db: Session = Depends(get_db)):
     if not members:
         raise HTTPException(400, "Aucun membre dans la tontine")
 
-    # Cycles COMPLÉTÉS uniquement (pas le cycle en cours)
-    completed_cycles = db.query(Cycle).filter(
-        Cycle.tontine_id == tontine_id,
-        Cycle.completed_at.isnot(None),
-        Cycle.beneficiary_id.isnot(None),
-    ).all()
-
-    # IDs des membres ayant déjà reçu dans ce "tour complet"
-    all_member_ids = {str(m.user_id) for m in members}
-    already_received = {str(c.beneficiary_id) for c in completed_cycles}
-
-    # Membres éligibles = ceux qui N'ont PAS encore reçu
-    eligible_ids = all_member_ids - already_received
-    eligible = [m for m in members if str(m.user_id) in eligible_ids]
-
-    # Si tout le monde a reçu → on repart de zéro (nouveau tour)
-    if not eligible:
-        eligible = members
-        already_received = set()
-
-    # Cycle actuel — vérifie qu'il n'a pas déjà un bénéficiaire
     cycle = db.query(Cycle).filter(
         Cycle.tontine_id == tontine_id,
         Cycle.cycle_number == tontine.current_cycle,
@@ -91,36 +77,76 @@ def draw_beneficiary(tontine_id: str, db: Session = Depends(get_db)):
     if cycle.beneficiary_id:
         raise HTTPException(400, "Un bénéficiaire a déjà été désigné pour ce cycle")
 
-    winner = random.choice(eligible)
     total = float(tontine.contribution_amount) * len(members)
 
+    # ── MODE ALÉATOIRE ────────────────────────────────────
+    if tontine.mode == "random":
+        completed_cycles = db.query(Cycle).filter(
+            Cycle.tontine_id == tontine_id,
+            Cycle.completed_at.isnot(None),
+            Cycle.beneficiary_id.isnot(None),
+        ).all()
+        all_ids      = {str(m.user_id) for m in members}
+        already_recv = {str(c.beneficiary_id) for c in completed_cycles}
+        eligible_ids = all_ids - already_recv
+        eligible     = [m for m in members if str(m.user_id) in eligible_ids]
+        if not eligible:
+            eligible = members  # nouveau tour
+        winner = random.choice(eligible)
+
+    # ── MODE TOUR FIXE (ordre d'inscription) ─────────────
+    elif tontine.mode == "fixed":
+        completed_cycles = db.query(Cycle).filter(
+            Cycle.tontine_id == tontine_id,
+            Cycle.completed_at.isnot(None),
+            Cycle.beneficiary_id.isnot(None),
+        ).all()
+        already_recv = {str(c.beneficiary_id) for c in completed_cycles}
+
+        # Trie par order_index
+        sorted_members = sorted(members, key=lambda m: m.order_index or 0)
+        # Prend le premier qui n'a pas encore reçu
+        eligible = [m for m in sorted_members if str(m.user_id) not in already_recv]
+        if not eligible:
+            eligible = sorted_members  # nouveau tour
+        winner = eligible[0]
+
+    # ── MODE MANUEL (gérant choisit) ──────────────────────
+    elif tontine.mode == "manual":
+        if not member_id:
+            raise HTTPException(400, "En mode manuel, tu dois choisir un membre (member_id requis)")
+        winner = db.query(TontineMember).filter(
+            TontineMember.tontine_id == tontine_id,
+            TontineMember.user_id == member_id,
+        ).first()
+        if not winner:
+            raise HTTPException(404, "Membre introuvable dans cette tontine")
+    else:
+        raise HTTPException(400, "Mode de distribution inconnu")
+
     cycle.beneficiary_id = winner.user_id
-    cycle.total_amount = total
+    cycle.total_amount   = total
 
     # Notifie tous les membres
     from ..services.notifications import notify_beneficiary_all
     all_ids = [str(m.user_id) for m in members]
     notify_beneficiary_all(db, all_ids, winner.user.name, total, tontine.current_cycle)
-
     db.commit()
 
-    # Infos sur les membres restants éligibles après ce tirage
-    remaining_eligible = len(eligible) - 1
-    new_tour = len(eligible) == len(members)  # True si on recommence un nouveau tour
+    completed = db.query(Cycle).filter(
+        Cycle.tontine_id == tontine_id,
+        Cycle.completed_at.isnot(None),
+    ).count()
+    remaining = len(members) - (completed % len(members)) - 1
 
     return {
-        "beneficiary_id": str(winner.user_id),
-        "beneficiary_name": winner.user.name,
+        "beneficiary_id":    str(winner.user_id),
+        "beneficiary_name":  winner.user.name,
         "beneficiary_phone": winner.user.phone,
-        "total_amount": total,
-        "cycle_number": tontine.current_cycle,
-        "remaining_eligible": remaining_eligible,
-        "new_tour": new_tour,
-        "message": (
-            f"Nouveau tour ! {winner.user.name} ouvre le cycle."
-            if new_tour else
-            f"{remaining_eligible} membre(s) n'ont pas encore reçu."
-        ),
+        "total_amount":      total,
+        "cycle_number":      tontine.current_cycle,
+        "remaining_eligible": max(0, remaining),
+        "mode":              tontine.mode,
     }
 
 @router.post("/tontine/{tontine_id}/close-cycle", summary="Clôturer le cycle actuel")
@@ -255,3 +281,5 @@ def remind_late_members(tontine_id: str, db: Session = Depends(get_db)):
         "message": f"Rappel envoyé à {len(late_ids)} membre(s) en retard",
         "count": len(late_ids),
     }
+
+

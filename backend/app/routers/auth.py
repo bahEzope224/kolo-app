@@ -29,7 +29,7 @@ async def request_otp(body: OtpRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.phone == phone).first()
 
     if not user:
-        raise HTTPException(404, "Numéro non enregistré. Demande à ton gérant de t'inviter.")
+        raise HTTPException(404, "Numéro non enregistré. Demande à ton gérant de t'inviter ou créer un nouveau compte.")
 
     if DEV_MODE:
         # En dev : code fixe, pas de SMS
