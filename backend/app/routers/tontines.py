@@ -176,6 +176,8 @@ def get_tontine_dashboard(tontine_id: str, db: Session = Depends(get_db)):
         "welcome_message":        tontine.welcome_message,
         "payment_day":            tontine.payment_day,
         "show_next_beneficiary":  tontine.show_next_beneficiary,
+        "show_payments": tontine.show_payments,
+        "mode": tontine.mode,
     }
 
 
@@ -224,6 +226,8 @@ class TontineSettings(BaseModel):
     welcome_message: Optional[str] = None
     show_next_beneficiary: Optional[bool] = None
     payment_day: Optional[int] = None  # jour du mois (1-28)
+    show_payments: Optional[bool] = None
+    mode: Optional[str] = None
 
 
 
@@ -241,5 +245,12 @@ def update_tontine_settings(tontine_id: str, body: TontineSettings, db: Session 
         if not 1 <= body.payment_day <= 28:
             raise HTTPException(400, "Le jour doit être entre 1 et 28")
         tontine.payment_day = body.payment_day
+        
+    if body.mode is not None:
+        if body.mode not in ["random", "fixed", "manual"]:
+            raise HTTPException(400, "Mode invalide")
+        tontine.mode = body.mode
+    if body.show_payments is not None:
+        tontine.show_payments = body.show_payments
     db.commit()
     return {"message": "Paramètres mis à jour"}

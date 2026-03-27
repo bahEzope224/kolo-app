@@ -32,3 +32,4 @@ class Tontine(Base):
     welcome_message      = Column(String(300), nullable=True)
     show_next_beneficiary = Column(Boolean, default=False)
     payment_day          = Column(Integer, default=1)
+    show_payments = Column(Boolean, default=True)

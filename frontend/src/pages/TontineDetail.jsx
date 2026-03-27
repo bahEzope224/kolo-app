@@ -238,7 +238,9 @@ export default function TontineDetail() {
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setShowDraw(true)}
                 className="bg-amber-400 hover:bg-amber-500 text-amber-900 font-black py-3.5 rounded-2xl text-sm transition border-none">
-                🎲 {data.beneficiary ? "Voir tirage" : "Tirage au sort"}
+                {data.mode === "manual" ? "✋ Choisir le bénéficiaire" :
+                  data.mode === "fixed" ? "📅 Désigner le suivant" :
+                    "🎲 Tirage au sort"}
               </button>
               <button onClick={() => setShowInvite(true)}
                 className="bg-slate-900 hover:bg-slate-700 text-white font-black py-3.5 rounded-2xl text-sm transition border-none">
@@ -265,13 +267,19 @@ export default function TontineDetail() {
         {/* Onglets membres / historique */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="flex border-b border-slate-100">
-            {["membres", "historique"].map((t) => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`flex-1 py-3 text-sm font-bold transition capitalize min-h-0 border-none rounded-none ${tab === t ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50" : "text-slate-400 hover:text-slate-600 bg-white"
+            <button onClick={() => setTab("membres")}
+              className={`flex-1 py-3 text-sm font-bold transition min-h-0 border-none rounded-none ${tab === "membres" ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50" : "text-slate-400 bg-white"
+                }`}>
+              👥 Membres ({data.member_count})
+            </button>
+            {/* Historique visible pour tous si show_payments, sinon gérant seulement */}
+            {(isGerant || data.show_payments) && (
+              <button onClick={() => setTab("historique")}
+                className={`flex-1 py-3 text-sm font-bold transition min-h-0 border-none rounded-none ${tab === "historique" ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50" : "text-slate-400 bg-white"
                   }`}>
-                {t === "membres" ? `👥 Membres (${data.member_count})` : "📋 Historique"}
+                📋 Historique
               </button>
-            ))}
+            )}
           </div>
 
           {tab === "membres" && (
@@ -282,26 +290,29 @@ export default function TontineDetail() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-400 transition" />
               </div>
               <div className="divide-y divide-slate-50">
-                {filteredMembers.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 text-sm">Aucun membre trouvé</div>
-                ) : filteredMembers.map((m) => (
+                {filteredMembers.map((m) => (
                   <div key={m.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 transition">
-                    <Avatar name={m.name} status={m.status} />
+                    <Avatar name={m.name} status={isGerant || data.show_payments ? m.status : "missing"} />
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-slate-800 text-sm truncate">{m.name}</div>
                       <div className="text-slate-400 text-xs">{m.phone}</div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {m.status === "paid" ? (
-                        <Badge status="paid" />
-                      ) : isGerant && m.payment_id ? (
-                        <button onClick={() => validateMutation.mutate(m.payment_id)}
-                          disabled={validateMutation.isPending}
-                          className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition min-h-0 disabled:opacity-60">
-                          ✓ Valider
-                        </button>
-                      ) : (
-                        <Badge status={m.status} />
+                      {/* Statut visible uniquement si gérant ou show_payments activé */}
+                      {(isGerant || data.show_payments) && (
+                        <>
+                          {m.status === "paid" ? (
+                            <Badge status="paid" />
+                          ) : isGerant && m.payment_id ? (
+                            <button onClick={() => validateMutation.mutate(m.payment_id)}
+                              disabled={validateMutation.isPending}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition min-h-0 disabled:opacity-60">
+                              ✓ Valider
+                            </button>
+                          ) : (
+                            <Badge status={m.status} />
+                          )}
+                        </>
                       )}
                       {isGerant && m.user_id !== data.manager_id && (
                         <button onClick={() => { if (confirm(`Retirer ${m.name} ?`)) removeMutation.mutate(m.user_id); }}

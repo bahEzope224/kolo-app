@@ -17,14 +17,14 @@ def notify_payment_validated(db: Session, member_id: str, member_name: str, amou
     )
 
 
-def notify_beneficiary_all(db: Session, member_ids: list, beneficiary_name: str, amount: float, cycle: int):
-    for uid in member_ids:
-        create_notif(
-            db, uid,
-            NotifType.beneficiary,
-            f"🎲 Bénéficiaire du cycle {cycle}",
-            f"{beneficiary_name} a été désigné(e) bénéficiaire et recevra {amount}€.",
-        )
+# def notify_beneficiary_all(db: Session, member_ids: list, beneficiary_name: str, amount: float, cycle: int):
+#     for uid in member_ids:
+#         create_notif(
+#             db, uid,
+#             NotifType.beneficiary,
+#             f"🎲 Bénéficiaire du cycle {cycle}",
+#             f"{beneficiary_name} a été désigné(e) bénéficiaire et recevra {amount}€.",
+#         )
 
 
 def notify_new_member(db: Session, manager_id: str, member_name: str, tontine_name: str):

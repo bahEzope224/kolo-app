@@ -2,20 +2,30 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateTontineSettings } from "../api/client";
 
+const MODES = [
+  { value: "random", label: "🎲 Tirage au sort", desc: "Bénéficiaire tiré aléatoirement" },
+  { value: "fixed",  label: "📅 Tour fixe",      desc: "Ordre d'inscription respecté" },
+  { value: "manual", label: "✋ Manuel",          desc: "Le gérant choisit à chaque cycle" },
+];
+
 export default function TontineSettingsModal({ tontineId, tontine, onClose }) {
   const qc = useQueryClient();
-  const [welcomeMsg, setWelcomeMsg]       = useState(tontine.welcome_message || "");
-  const [showBenef, setShowBenef]         = useState(tontine.show_next_beneficiary || false);
-  const [paymentDay, setPaymentDay]       = useState(tontine.payment_day || 1);
-  const [toast, setToast]                 = useState("");
+  const [welcomeMsg,   setWelcomeMsg]   = useState(tontine.welcome_message || "");
+  const [showBenef,    setShowBenef]    = useState(tontine.show_next_beneficiary || false);
+  const [showPayments, setShowPayments] = useState(tontine.show_payments !== false);
+  const [paymentDay,   setPaymentDay]   = useState(tontine.payment_day || 1);
+  const [mode,         setMode]         = useState(tontine.mode || "random");
+  const [toast,        setToast]        = useState("");
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 2500); }
 
   const mutation = useMutation({
     mutationFn: () => updateTontineSettings(tontineId, {
-      welcome_message:       welcomeMsg || null,
-      show_next_beneficiary: showBenef,
-      payment_day:           paymentDay,
+      welcome_message:        welcomeMsg || null,
+      show_next_beneficiary:  showBenef,
+      show_payments:          showPayments,
+      payment_day:            paymentDay,
+      mode:                   mode,
     }),
     onSuccess: () => {
       qc.invalidateQueries(["tontine", tontineId]);
@@ -25,34 +35,55 @@ export default function TontineSettingsModal({ tontineId, tontine, onClose }) {
     onError: (e) => showToast(e.response?.data?.detail || "Erreur"),
   });
 
+  const Toggle = ({ checked, onChange, label, desc }) => (
+    <div className="flex items-start gap-3 bg-slate-50 rounded-xl p-4">
+      <label className="relative inline-flex items-center cursor-pointer mt-0.5 flex-shrink-0">
+        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} className="sr-only peer"/>
+        <div className="w-10 h-5 bg-slate-300 rounded-full peer peer-checked:bg-emerald-500 transition-colors"/>
+        <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"/>
+      </label>
+      <div>
+        <div className="font-bold text-slate-800 text-sm">{label}</div>
+        <div className="text-xs text-slate-500 mt-0.5">{desc}</div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4"
       onClick={onClose}>
-      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}>
 
-        <div className="bg-slate-900 px-5 py-4 flex items-center justify-between">
+        <div className="bg-slate-900 px-5 py-4 flex items-center justify-between flex-shrink-0">
           <div className="font-black text-white text-base">⚙️ Paramètres de la tontine</div>
           <button onClick={onClose}
             className="text-slate-400 hover:text-white text-xl min-h-0 p-0 bg-transparent border-none">✕</button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-5 space-y-5 overflow-y-auto flex-1">
 
-          {/* Message de bienvenue */}
+          {/* Mode de distribution */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-2">
-              💬 Message de bienvenue pour les nouveaux membres
+            <label className="block text-xs font-bold text-slate-600 mb-3">
+              🎯 Mode de désignation du bénéficiaire
             </label>
-            <textarea
-              value={welcomeMsg}
-              onChange={e => setWelcomeMsg(e.target.value)}
-              placeholder="Ex: Bienvenue dans notre tontine ! Les versements sont dus avant le 5 de chaque mois."
-              rows={3}
-              maxLength={300}
-              className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-400 resize-none"
-            />
-            <div className="text-xs text-slate-400 text-right mt-1">{welcomeMsg.length}/300</div>
+            <div className="space-y-2">
+              {MODES.map(m => (
+                <label key={m.value}
+                  className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ${
+                    mode === m.value ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-slate-300"
+                  }`}>
+                  <input type="radio" name="mode" value={m.value} checked={mode === m.value}
+                    onChange={() => setMode(m.value)}
+                    className="accent-emerald-500 w-4 h-4 flex-shrink-0"/>
+                  <div>
+                    <div className="font-bold text-slate-800 text-sm">{m.label}</div>
+                    <div className="text-slate-500 text-xs mt-0.5">{m.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Jour de versement */}
@@ -61,37 +92,39 @@ export default function TontineSettingsModal({ tontineId, tontine, onClose }) {
               📅 Jour de versement mensuel
             </label>
             <div className="flex items-center gap-3">
-              <input
-                type="number" min="1" max="28"
-                value={paymentDay}
+              <input type="number" min="1" max="28" value={paymentDay}
                 onChange={e => setPaymentDay(Number(e.target.value))}
-                className="w-20 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-lg font-black text-center focus:outline-none focus:border-emerald-400"
-              />
+                className="w-20 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-lg font-black text-center focus:outline-none focus:border-emerald-400"/>
               <span className="text-slate-500 text-sm">de chaque mois</span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Les membres verront la date limite dans leur dashboard.
-            </p>
           </div>
 
-          {/* Afficher le prochain bénéficiaire */}
-          <div className="flex items-start gap-3 bg-slate-50 rounded-xl p-4">
-            <label className="relative inline-flex items-center cursor-pointer mt-0.5 flex-shrink-0">
-              <input type="checkbox" checked={showBenef}
-                onChange={e => setShowBenef(e.target.checked)}
-                className="sr-only peer"/>
-              <div className="w-10 h-5 bg-slate-300 rounded-full peer peer-checked:bg-emerald-500 transition-colors"/>
-              <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"/>
+          {/* Message de bienvenue */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-2">
+              💬 Message de bienvenue
             </label>
-            <div>
-              <div className="font-bold text-slate-800 text-sm">
-                🎲 Afficher le prochain bénéficiaire publiquement
-              </div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                Tous les membres voient qui recevra le prochain versement avant le tirage.
-              </div>
-            </div>
+            <textarea value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
+              placeholder="Ex: Bienvenue ! Les versements sont dus avant le 5 de chaque mois."
+              rows={3} maxLength={300}
+              className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-400 resize-none"/>
+            <div className="text-xs text-slate-400 text-right mt-1">{welcomeMsg.length}/300</div>
           </div>
+
+          {/* Toggles */}
+          <Toggle
+            checked={showBenef}
+            onChange={setShowBenef}
+            label="🎲 Afficher le prochain bénéficiaire"
+            desc="Tous les membres voient qui recevra le prochain versement."
+          />
+
+          <Toggle
+            checked={showPayments}
+            onChange={setShowPayments}
+            label="💳 Afficher les versements à tous les membres"
+            desc="Si désactivé, seul le gérant voit qui a payé ou non."
+          />
 
           {toast && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 text-emerald-700 text-sm font-semibold text-center">
@@ -99,11 +132,8 @@ export default function TontineSettingsModal({ tontineId, tontine, onClose }) {
             </div>
           )}
 
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition border-none"
-          >
+          <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-black py-3.5 rounded-xl text-sm transition border-none">
             {mutation.isPending ? "Sauvegarde…" : "Sauvegarder les paramètres"}
           </button>
         </div>
