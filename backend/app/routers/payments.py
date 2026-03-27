@@ -12,7 +12,6 @@ from ..models.user import User
 
 from ..services.notifications import (
     notify_payment_validated,
-    notify_beneficiary_all,
     notify_late_members,
 )
 router = APIRouter(prefix="/payments", tags=["Versements"])
