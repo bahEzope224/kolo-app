@@ -10,7 +10,7 @@ from ..database import Base
 class NotifType(str, enum.Enum):
     payment_validated = "payment_validated"
     late_reminder     = "late_reminder"
-    beneficiary       = "beneficiary"
+    # beneficiary       = "beneficiary"
     new_member        = "new_member"
 
 

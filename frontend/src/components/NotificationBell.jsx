@@ -5,7 +5,6 @@ import { getNotifications, markAllRead } from "../api/client";
 const ICONS = {
   payment_validated: "✅",
   late_reminder:     "⏰",
-  beneficiary:       "🎲",
   new_member:        "👥",
 };
 
