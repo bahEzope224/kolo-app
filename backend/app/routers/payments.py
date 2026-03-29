@@ -159,8 +159,6 @@ def draw_beneficiary(
     cycle.beneficiary_id = winner.user_id
     cycle.total_amount   = total
 
-    all_ids_list = [str(m.user_id) for m in members]
-    notify_beneficiary_all(db, all_ids_list, winner.user.name, total, tontine.current_cycle)
     db.commit()
 
     return {
