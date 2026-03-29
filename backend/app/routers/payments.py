@@ -9,7 +9,7 @@ from ..database import get_db
 from ..models.payment import Cycle, Payment, TontineMember
 from ..models.tontine import Tontine
 from ..models.user import User
-from ..services.notifications import notify_payment_validated, notify_beneficiary_all, notify_late_members
+from ..services.notifications import notify_payment_validated, notify_late_members
 
 router = APIRouter(prefix="/payments", tags=["Versements"])
 
