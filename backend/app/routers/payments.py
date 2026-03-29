@@ -56,7 +56,6 @@ def draw_beneficiary(
     member_id: Optional[str] = None,   # pour mode manuel
     db: Session = Depends(get_db)
 ):
-    from typing import Optional
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
@@ -125,12 +124,6 @@ def draw_beneficiary(
 
     cycle.beneficiary_id = winner.user_id
     cycle.total_amount   = total
-
-    # Notifie tous les membres
-    from ..services.notifications import notify_beneficiary_all
-    all_ids = [str(m.user_id) for m in members]
-    notify_beneficiary_all(db, all_ids, winner.user.name, total, tontine.current_cycle)
-    db.commit()
 
     completed = db.query(Cycle).filter(
         Cycle.tontine_id == tontine_id,
