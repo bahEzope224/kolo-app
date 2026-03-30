@@ -6,6 +6,7 @@ import { getMemberTontines } from "../api/client";
 import NotificationBell from "../components/NotificationBell";
 import api from "../api/client";
 import AppHeader from "../components/AppHeader";
+import { getPendingTransfers, respondTransfer } from "../api/client";
 
 const getManagerTontines = (managerId) =>
   api.get(`/tontines/manager/${managerId}`).then((r) => r.data);
@@ -178,7 +179,61 @@ export default function Dashboard() {
     setCreated(tontine);
     setShowForm(false);
   }
+{/* Demandes de transfert reçues */}
+<PendingTransfers userId={user?.id} />
+function PendingTransfers({ userId }) {
+  const qc = useQueryClient();
+  const { data: transfers = [] } = useQuery({
+    queryKey: ["pending-transfers", userId],
+    queryFn:  () => getPendingTransfers(userId),
+    enabled:  !!userId,
+  });
 
+  const respondMutation = useMutation({
+    mutationFn: ({ id, accept }) => respondTransfer(id, accept),
+    onSuccess: () => {
+      qc.invalidateQueries(["pending-transfers", userId]);
+      qc.invalidateQueries(["tontines", userId]);
+    },
+  });
+
+  if (transfers.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {transfers.map(t => (
+        <div key={t.id} className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3 mb-4">
+            <span className="text-2xl flex-shrink-0">👑</span>
+            <div>
+              <div className="font-black text-amber-800 text-base">Demande de gérance</div>
+              <div className="text-amber-700 text-sm mt-0.5">
+                <strong>{t.from_user_name}</strong> te propose de gérer la tontine{" "}
+                <strong>"{t.tontine_name}"</strong>.
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => respondMutation.mutate({ id: t.id, accept: false })}
+              disabled={respondMutation.isPending}
+              className="bg-white border-2 border-slate-200 text-slate-700 font-bold py-3 rounded-xl text-sm transition border-solid min-h-0 disabled:opacity-60"
+            >
+              ✕ Refuser
+            </button>
+            <button
+              onClick={() => respondMutation.mutate({ id: t.id, accept: true })}
+              disabled={respondMutation.isPending}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm transition border-none min-h-0 disabled:opacity-60"
+            >
+              ✓ Accepter
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
   return (
     
     <div className="min-h-screen bg-slate-50">

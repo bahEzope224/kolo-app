@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import auth, members, payments, tontines, notifications, users, admin
+from .routers import auth, members, payments, tontines, notifications, users, admin, transfer
 
 app = FastAPI(
     title="Kolo API",
@@ -29,6 +29,7 @@ app.include_router(payments.router)
 app.include_router(notifications.router)
 app.include_router(users.router)
 app.include_router(admin.router)
+app.include_router(transfer.router)
 
 
 @app.get("/health", tags=["Système"])

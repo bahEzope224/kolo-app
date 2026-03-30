@@ -7,6 +7,7 @@ import DrawModal from "../components/DrawModal";
 import AddPaymentModal from "../components/AddPaymentModal";
 import NotificationBell from "../components/NotificationBell";
 import TontineSettingsModal from "../components/TontineSettingsModal";
+import TransferModal from "../components/TransferModal";
 
 function initials(name) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -70,6 +71,7 @@ export default function TontineDetail() {
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [search, setSearch] = useState("");
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const user = JSON.parse(
     localStorage.getItem("kolo_user") ||
@@ -264,6 +266,15 @@ export default function TontineDetail() {
           </div>
         )}
 
+        {isGerant && (
+          <button
+            onClick={() => setShowTransfer(true)}
+            className="w-full bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-2xl text-sm transition"
+          >
+            👑 Transférer la gérance
+          </button>
+        )}
+
         {/* Onglets membres / historique */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="flex border-b border-slate-100">
@@ -383,6 +394,16 @@ export default function TontineDetail() {
       )}
       {showSettings && (
         <TontineSettingsModal tontineId={id} tontine={data} onClose={() => setShowSettings(false)} />
+      )}
+
+      {showTransfer && (
+        <TransferModal
+          tontineId={id}
+          fromUserId={user?.id}
+          managerId={data.manager_id}
+          members={data.members}
+          onClose={() => setShowTransfer(false)}
+        />
       )}
     </div>
   );

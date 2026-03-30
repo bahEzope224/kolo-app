@@ -109,3 +109,8 @@ export const updateTontineSettings = (tontineId, data) =>
 
 export const getAdminStats = () =>
   api.get("/admin/stats").then(r => r.data);
+
+export const requestTransfer  = (data)               => api.post("/transfer/request", data).then(r => r.data);
+export const respondTransfer  = (transferId, accept)  => api.post(`/transfer/${transferId}/respond?accept=${accept}`).then(r => r.data);
+export const getPendingTransfers = (userId)           => api.get(`/transfer/user/${userId}/pending`).then(r => r.data);
+export const getTontinePendingTransfer = (tontineId)  => api.get(`/transfer/tontine/${tontineId}/pending`).then(r => r.data);
