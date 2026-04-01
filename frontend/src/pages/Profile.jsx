@@ -184,7 +184,7 @@ export default function Profile() {
         </div>
 
         {/* Résumé financier */}
-        {summary && (
+        {/* {summary && (
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             <div className="px-5 py-3 border-b border-slate-100 font-black text-sm">📊 Résumé financier</div>
             <div className="grid grid-cols-3 divide-x divide-slate-100">
@@ -215,7 +215,7 @@ export default function Profile() {
               </div>
             ))}
           </div>
-        )}
+        )} */}
 
         {/* Supprimer le compte */}
         {!showDelete ? (
