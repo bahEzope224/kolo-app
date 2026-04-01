@@ -1,5 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SignedIn, SignedOut, RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
+import { useEffect, useState } from "react";
+import api, { syncUser, setAuthTokenGetter } from "./api/client";
 import Login       from "./pages/Login";
 import Dashboard   from "./pages/Dashboard";
 import TontineDetail from "./pages/TontineDetail";
@@ -15,14 +18,20 @@ const queryClient = new QueryClient({
 });
 
 function Protected({ children }) {
-  const token = localStorage.getItem("kolo_token") ||
-                sessionStorage.getItem("kolo_token");
-  return token ? children : <Navigate to="/login" replace />;
+  return (
+    <>
+      <SignedIn>{children}</SignedIn>
+      <SignedOut>
+        <Navigate to="/login" replace />
+      </SignedOut>
+    </>
+  );
 }
 
 function AppShell() {
   const location  = useLocation();
-  const isAuth    = !!(localStorage.getItem("kolo_token") || sessionStorage.getItem("kolo_token"));
+  const { isSignedIn } = useAuth();
+  const isAuth    = isSignedIn;
   const hideNav   = ["/login", "/accueil"].includes(location.pathname) ||
                     location.pathname.startsWith("/join/");
 
@@ -53,10 +62,44 @@ function AppShell() {
   );
 }
 
+function UserSync() {
+  const { user, isLoaded, isSignedIn } = useUser();
+  
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user) {
+      const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || "Utilisateur Kolo";
+      const email = user.primaryEmailAddress?.emailAddress;
+      syncUser(fullName, email).catch(() => {});
+    }
+  }, [isLoaded, isSignedIn, user]);
+  
+  return null;
+}
+
 export default function App() {
+  const { getToken, isSignedIn, isLoaded: authLoaded } = useAuth();
+  const [apiReady, setApiReady] = useState(false);
+
+  useEffect(() => {
+    if (authLoaded) {
+      // Register the token getter once Clerk is loaded
+      setAuthTokenGetter(getToken);
+      setApiReady(true);
+    }
+  }, [authLoaded, getToken]);
+
+  if (!authLoaded || !apiReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-slate-400 text-sm animate-pulse font-medium">Initialisation...</div>
+      </div>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <UserSync />
         <AppShell />
       </BrowserRouter>
     </QueryClientProvider>

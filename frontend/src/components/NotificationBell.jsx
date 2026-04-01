@@ -6,6 +6,7 @@ const ICONS = {
   payment_validated: "✅",
   late_reminder:     "⏰",
   new_member:        "👥",
+  new_cycle:         "🚀",
 };
 
 function timeAgo(iso) {
@@ -16,21 +17,20 @@ function timeAgo(iso) {
   return `Il y a ${Math.floor(diff / 86400)}j`;
 }
 
-export default function NotificationBell({ userId }) {
+export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const qc = useQueryClient();
 
   const { data: notifs = [] } = useQuery({
-    queryKey: ["notifs", userId],
-    queryFn: () => getNotifications(userId),
+    queryKey: ["notifs"],
+    queryFn: () => getNotifications(),
     refetchInterval: 15000, // rafraîchit toutes les 15s
-    enabled: !!userId,
   });
 
   const markMutation = useMutation({
-    mutationFn: () => markAllRead(userId),
-    onSuccess: () => qc.invalidateQueries(["notifs", userId]),
+    mutationFn: () => markAllRead(),
+    onSuccess: () => qc.invalidateQueries(["notifs"]),
   });
 
   const unread = notifs.filter((n) => !n.is_read).length;

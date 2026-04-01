@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/clerk-react";
 import { getTontineDashboard, validatePayment, remindLateMembers, removeMember } from "../api/client";
 import InviteModal from "../components/InviteModal";
 import DrawModal from "../components/DrawModal";
@@ -74,21 +75,16 @@ export default function TontineDetail() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const qc       = useQueryClient();
-
-  const [showInvite,     setShowInvite]     = useState(false);
-  const [showDraw,       setShowDraw]       = useState(false);
+  const { user } = useUser();
+  const [showInvite, setShowInvite] = useState(false);
+  const [showDraw, setShowDraw] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
-  const [showSettings,   setShowSettings]   = useState(false);
-  const [showTransfer,   setShowTransfer]   = useState(false);
-  const [showMembers,    setShowMembers]    = useState(false);
-  const [showHistory,    setShowHistory]    = useState(false);
-  const [toast,          setToast]          = useState("");
-  const [search,         setSearch]         = useState("");
-
-  const user = JSON.parse(
-    localStorage.getItem("kolo_user") ||
-    sessionStorage.getItem("kolo_user") || "{}"
-  );
+  const [showSettings, setShowSettings] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["tontine", id],
@@ -116,7 +112,7 @@ export default function TontineDetail() {
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 3000); }
 
-  const isGerant = data?.manager_id === user?.id;
+  const isGerant = data?.is_manager;
   const lateCount = data ? data.member_count - data.paid_count : 0;
 
   if (isLoading) return (
@@ -151,10 +147,10 @@ export default function TontineDetail() {
           </span>
         )}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <NotificationBell userId={user?.id} />
+          <NotificationBell />
           <button onClick={() => navigate("/profile")}
             className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0">
-            {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
+            {user?.firstName?.charAt(0) || user?.username?.charAt(0) || "?"}
           </button>
         </div>
       </header>
@@ -274,7 +270,7 @@ export default function TontineDetail() {
           <ActionRow icon="👤" label="Voir les participants"
             sublabel={`${data.member_count} membres`}
             onClick={() => setShowMembers(!showMembers)} />
-          {(isGerant || data.show_payments) && (
+          {(isGerant || (data.show_payments && data.show_next_beneficiary)) && (
             <ActionRow icon="📋" label="Historique des cycles"
               sublabel={`${data.history?.length || 0} cycle${data.history?.length > 1 ? "s" : ""} terminé${data.history?.length > 1 ? "s" : ""}`}
               onClick={() => setShowHistory(!showHistory)} />
@@ -326,7 +322,7 @@ export default function TontineDetail() {
         )}
 
         {/* ── HISTORIQUE (dépliable) ── */}
-        {showHistory && (isGerant || data.show_payments) && (
+        {showHistory && (isGerant || (data.show_payments && data.show_next_beneficiary)) && (
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
             {data.history.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">Aucun cycle terminé</div>

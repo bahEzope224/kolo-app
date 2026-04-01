@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 
 const FEATURES = [
   { icon: "🌿", title: "Simple à utiliser",       desc: "Connexion par SMS, aucun mot de passe à retenir. Accessible à tous." },
@@ -18,7 +19,8 @@ const STEPS = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const isLoggedIn = !!localStorage.getItem("kolo_token");
+  const { isSignedIn } = useAuth();
+  const isLoggedIn = isSignedIn;
 
   return (
     <div className="min-h-screen bg-white font-sans">

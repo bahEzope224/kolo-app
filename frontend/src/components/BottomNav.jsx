@@ -1,17 +1,14 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react";
 
 const ADMIN_PHONE = "+33749404145";
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useUser();
 
-  const user = JSON.parse(
-    localStorage.getItem("kolo_user") ||
-    sessionStorage.getItem("kolo_user") ||
-    "{}"
-  );
-  const isAdmin = user?.phone === ADMIN_PHONE;
+  const isAdmin = user?.primaryPhoneNumber?.phoneNumber === ADMIN_PHONE;
 
   const TABS = [
     { path: "/",        icon: "📊", label: "Dashboard" },

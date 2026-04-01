@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -6,6 +7,8 @@ from ..models.user import User
 from ..models.payment import TontineMember, Payment, Cycle
 from ..models.tontine import Tontine
 from sqlalchemy import func
+
+from ..deps import get_current_user
 
 router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 
@@ -20,21 +23,42 @@ class UserCreate(BaseModel):
     phone: str
 
 
-@router.post("/", summary="Créer un compte")
-def create_user(body: UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.phone == body.phone).first()
-    if existing:
-        raise HTTPException(400, "Ce numéro est déjà enregistré")
-    user = User(name=body.name, phone=body.phone)
-    db.add(user)
+class UserSync(BaseModel):
+    name: str
+    email: Optional[str] = None
+
+
+@router.post("/sync", summary="Synchroniser le nom et le rôle avec Clerk")
+def sync_user(body: UserSync, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.name or current_user.name == "Utilisateur Kolo":
+        current_user.name = body.name.strip()
+    
+    # Promotion admin & enregistrement email
+    if body.email:
+        current_user.email = body.email.strip().lower()
+        if current_user.email == "contact@ibrahima-bah.com":
+            current_user.is_admin = True
+    
     db.commit()
-    db.refresh(user)
-    return {"message": "Compte créé", "user_id": str(user.id), "name": user.name}
+    return {"name": current_user.name, "is_admin": current_user.is_admin}
+
+
+@router.get("/me", summary="Profil utilisateur connecté")
+def get_my_profile(current_user: User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "name": current_user.name,
+        "phone": current_user.phone,
+        "avatar": current_user.avatar,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None
+    }
 
 
 # 1. D'ABORD la route admin
 @router.get("/admin/stats", summary="Statistiques générales")
-def get_admin_stats(db: Session = Depends(get_db)):
+def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(403, "Accès réservé à l'administrateur")
     from sqlalchemy import func
     from ..models.tontine import Tontine
     from ..models.payment import Payment, TontineMember
@@ -55,17 +79,39 @@ def get_admin_stats(db: Session = Depends(get_db)):
         "total_amount":   float(total_amount),
     }
 
-@router.get("/{user_id}", summary="Profil utilisateur")
-def get_profile(user_id: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(404, "Utilisateur introuvable")
-    return {"id": str(user.id), "name": user.name, "phone": user.phone, "created_at": user.created_at.isoformat()}
+
+@router.get("/admin/users", summary="Liste des utilisateurs (Admin)")
+def get_admin_users(search: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not current_user.is_admin:
+        raise HTTPException(403, "Accès réservé à l'administrateur")
+    
+    query = db.query(User)
+    if search:
+        sf = f"%{search}%"
+        query = query.filter((User.name.ilike(sf)) | (User.email.ilike(sf)))
+    
+    users = query.order_by(User.created_at.desc()).limit(50).all()
+    return [
+        {
+            "id": str(u.id),
+            "name": u.name,
+            "email": u.email,
+            "phone": u.phone,
+            "avatar": u.avatar,
+            "is_admin": u.is_admin,
+            "created_at": u.created_at.isoformat() if u.created_at else None
+        } for u in users
+    ]
 
 
-@router.put("/{user_id}", summary="Mettre à jour le profil")
-def update_profile(user_id: str, body: UserUpdate, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
+@router.get("/profile", summary="Profil utilisateur (obsolète, préférer /me)")
+def get_profile_old(current_user: User = Depends(get_current_user)):
+    return {"id": str(current_user.id), "name": current_user.name, "phone": current_user.phone, "created_at": current_user.created_at.isoformat() if current_user.created_at else None}
+
+
+@router.put("/me", summary="Mettre à jour mon profil")
+def update_my_profile(body: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user = current_user
     if not user:
         raise HTTPException(404, "Utilisateur introuvable")
 
@@ -84,9 +130,10 @@ def update_profile(user_id: str, body: UserUpdate, db: Session = Depends(get_db)
     return {"message": "Profil mis à jour", "name": user.name, "phone": user.phone}
 
 
-@router.get("/{user_id}/summary", summary="Résumé financier")
-def get_financial_summary(user_id: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
+@router.get("/me/summary", summary="Résumé financier (moi)")
+def get_my_financial_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user = current_user
+    user_id = str(user.id)
     if not user:
         raise HTTPException(404, "Utilisateur introuvable")
 

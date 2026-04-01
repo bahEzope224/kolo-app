@@ -9,13 +9,13 @@ from ..models.tontine import Tontine
 from ..models.payment import TontineMember
 from ..models.user import User
 from ..models.notification import Notification, NotifType
+from ..deps import get_current_user
 
 router = APIRouter(prefix="/transfer", tags=["Transfert"])
 
 
 class TransferCreate(BaseModel):
     tontine_id:   str
-    from_user_id: str
     to_user_id:   str
 
 
@@ -27,11 +27,13 @@ def get_tontine(db, tontine_id):
 
 
 @router.post("/request", summary="Demander un transfert de gérance")
-def request_transfer(body: TransferCreate, db: Session = Depends(get_db)):
+def request_transfer(body: TransferCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     tontine  = get_tontine(db, body.tontine_id)
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
-    if str(tontine.manager_id) != body.from_user_id:
+    
+    from_user_id = str(current_user.id)
+    if str(tontine.manager_id) != from_user_id:
         raise HTTPException(403, "Seul le gérant peut transférer la gestion")
 
     member = db.query(TontineMember).filter(
@@ -49,13 +51,13 @@ def request_transfer(body: TransferCreate, db: Session = Depends(get_db)):
 
     transfer = TransferRequest(
         tontine_id=body.tontine_id,
-        from_user_id=body.from_user_id,
+        from_user_id=from_user_id,
         to_user_id=body.to_user_id,
     )
     db.add(transfer)
     db.flush()
 
-    from_user = get_user(db, body.from_user_id)
+    from_user = current_user
     to_user   = get_user(db, body.to_user_id)
 
     notif = Notification(
@@ -71,13 +73,14 @@ def request_transfer(body: TransferCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/{transfer_id}/respond", summary="Accepter ou refuser le transfert")
-def respond_transfer(transfer_id: str, accept: bool, db: Session = Depends(get_db)):
+def respond_transfer(transfer_id: str, accept: bool, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     transfer = db.query(TransferRequest).filter(
-        TransferRequest.id     == transfer_id,
-        TransferRequest.status == TransferStatus.pending,
+        TransferRequest.id         == transfer_id,
+        TransferRequest.to_user_id == current_user.id,
+        TransferRequest.status     == TransferStatus.pending,
     ).first()
     if not transfer:
-        raise HTTPException(404, "Demande introuvable ou déjà traitée")
+        raise HTTPException(404, "Demande introuvable, déjà traitée ou non autorisée")
 
     transfer.responded_at = datetime.utcnow()
     tontine   = get_tontine(db, str(transfer.tontine_id))
@@ -114,8 +117,9 @@ def respond_transfer(transfer_id: str, accept: bool, db: Session = Depends(get_d
         return {"message": "Transfert refusé"}
 
 
-@router.get("/user/{user_id}/pending", summary="Demandes reçues en attente")
-def get_user_pending_transfers(user_id: str, db: Session = Depends(get_db)):
+@router.get("/my-pending", summary="Demandes reçues en attente (utilisateur connecté)")
+def get_my_pending_transfers(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = str(current_user.id)
     transfers = db.query(TransferRequest).filter(
         TransferRequest.to_user_id == user_id,
         TransferRequest.status     == TransferStatus.pending,

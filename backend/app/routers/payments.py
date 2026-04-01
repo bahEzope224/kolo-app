@@ -1,7 +1,7 @@
 import random
 from datetime import datetime
-from typing import Optional
-
+from typing import Optional, List
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,13 @@ from ..database import get_db
 from ..models.payment import Cycle, Payment, TontineMember
 from ..models.tontine import Tontine
 from ..models.user import User
-from ..services.notifications import notify_payment_validated, notify_late_members
+from ..services.notifications import (
+    notify_payment_validated,
+    notify_late_members,
+    notify_beneficiary,
+    notify_cycle_start
+)
+from ..deps import get_current_user
 
 router = APIRouter(prefix="/payments", tags=["Versements"])
 
@@ -31,10 +37,16 @@ def get_cycle_payments(cycle_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{payment_id}/validate", summary="Valider un versement")
-async def validate_payment(payment_id: str, db: Session = Depends(get_db)):
+async def validate_payment(payment_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     payment = db.query(Payment).filter(Payment.id == payment_id).first()
     if not payment:
         raise HTTPException(404, "Versement introuvable")
+    
+    # Vérifie que l'utilisateur est le gérant de la tontine associée
+    tontine = payment.cycle.tontine
+    if str(tontine.manager_id) != str(current_user.id):
+        raise HTTPException(403, "Action réservée au gérant")
+
     if payment.is_validated:
         raise HTTPException(400, "Déjà validé")
 
@@ -47,10 +59,14 @@ async def validate_payment(payment_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/tontine/{tontine_id}/add", summary="Ajouter un versement manuellement")
-def add_payment(tontine_id: str, member_id: str, amount: float, db: Session = Depends(get_db)):
+def add_payment(tontine_id: str, member_id: str, amount: float, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
+
+    # Vérifie que l'utilisateur est le gérant
+    if str(tontine.manager_id) != str(current_user.id):
+        raise HTTPException(403, "Action réservée au gérant")
 
     member = db.query(TontineMember).filter(
         TontineMember.tontine_id == tontine_id,
@@ -75,6 +91,7 @@ def add_payment(tontine_id: str, member_id: str, amount: float, db: Session = De
         existing.amount = amount
         existing.is_validated = True
         existing.validated_at = datetime.utcnow()
+        notify_payment_validated(db, str(existing.member_id), existing.member.name, float(existing.amount))
         db.commit()
         return {"message": "Versement mis à jour et validé", "payment_id": str(existing.id)}
     else:
@@ -88,7 +105,76 @@ def add_payment(tontine_id: str, member_id: str, amount: float, db: Session = De
         db.add(payment)
         db.commit()
         db.refresh(payment)
+        notify_payment_validated(db, str(payment.member_id), payment.member.name, float(payment.amount))
+        db.commit()
         return {"message": "Versement enregistré et validé", "payment_id": str(payment.id)}
+
+
+class BulkPaymentRequest(BaseModel):
+    member_ids: List[str]
+    amount: float
+
+
+@router.post("/tontine/{tontine_id}/add-bulk", summary="Enregistrer plusieurs versements")
+def add_bulk_payments(tontine_id: str, body: BulkPaymentRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(404, "Tontine introuvable")
+
+    # Autorisation gérant
+    if str(tontine.manager_id) != str(current_user.id):
+        raise HTTPException(403, "Action réservée au gérant")
+
+    cycle = db.query(Cycle).filter(
+        Cycle.cycle_number == tontine.current_cycle,
+        Cycle.tontine_id == tontine_id
+    ).first()
+    if not cycle:
+        raise HTTPException(400, "Cycle actuel introuvable")
+
+    now = datetime.utcnow()
+    results = []
+
+    for member_id in body.member_ids:
+        # Vérifie que l'utilisateur est bien membre de cette tontine
+        is_member = db.query(TontineMember).filter(
+            TontineMember.tontine_id == tontine_id,
+            TontineMember.user_id == member_id
+        ).first()
+        if not is_member:
+            continue
+
+        existing = db.query(Payment).filter(
+            Payment.cycle_id == cycle.id,
+            Payment.member_id == member_id
+        ).first()
+
+        if existing:
+            existing.amount = body.amount
+            existing.is_validated = True
+            existing.validated_at = now
+        else:
+            payment = Payment(
+                cycle_id=cycle.id,
+                member_id=member_id,
+                amount=body.amount,
+                is_validated=True,
+                validated_at=now
+            )
+            db.add(payment)
+        
+        results.append(member_id)
+
+    db.commit()
+    
+    # Notifie tous les membres dont le versement a été validé
+    for member_id in results:
+        m = db.query(User).filter(User.id == member_id).first()
+        if m:
+            notify_payment_validated(db, member_id, m.name, body.amount)
+    db.commit()
+    
+    return {"message": f"{len(results)} versements enregistrés", "count": len(results)}
 
 
 @router.post("/tontine/{tontine_id}/draw", summary="Désigner le bénéficiaire")
@@ -96,10 +182,15 @@ def draw_beneficiary(
     tontine_id: str,
     member_id: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
+
+    # Autorisation gérant
+    if str(tontine.manager_id) != str(current_user.id):
+        raise HTTPException(403, "Seul le gérant peut effectuer le tirage")
 
     members = db.query(TontineMember).filter(
         TontineMember.tontine_id == tontine_id
@@ -159,6 +250,7 @@ def draw_beneficiary(
     cycle.beneficiary_id = winner.user_id
     cycle.total_amount   = total
 
+    notify_beneficiary(db, str(winner.user_id), total, tontine.name, tontine.current_cycle)
     db.commit()
 
     return {
@@ -172,10 +264,13 @@ def draw_beneficiary(
 
 
 @router.post("/tontine/{tontine_id}/close-cycle", summary="Clôturer le cycle actuel")
-def close_cycle(tontine_id: str, db: Session = Depends(get_db)):
+def close_cycle(tontine_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
+
+    if str(tontine.manager_id) != str(current_user.id):
+        raise HTTPException(403, "Action réservée au gérant")
 
     cycle = db.query(Cycle).filter(
         Cycle.tontine_id == tontine_id,
@@ -201,6 +296,7 @@ def close_cycle(tontine_id: str, db: Session = Depends(get_db)):
         )
         db.add(payment)
 
+    notify_cycle_start(db, [str(m.user_id) for m in tontine.members], tontine.name, tontine.current_cycle)
     db.commit()
     return {"message": f"Cycle {cycle.cycle_number} clôturé", "new_cycle": tontine.current_cycle}
 

@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     twilio_account_sid: Optional[str] = None
     twilio_auth_token: Optional[str] = None
     twilio_phone_number: Optional[str] = None
+    
+    clerk_secret_key: Optional[str] = None
+    clerk_publishable_key: Optional[str] = None
 
     environment: str = "development"
     cors_origins: str = "https://kolo-app-two.vercel.app/"

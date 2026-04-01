@@ -8,6 +8,9 @@ from ..models.user import User
 from ..schemas.tontine import MemberInvite
 from ..services.notifications import notify_new_member
 
+from ..services.notifications import notify_new_member
+from ..deps import get_current_user
+
 router = APIRouter(prefix="/members", tags=["Membres"])
 
 
@@ -67,16 +70,14 @@ def invite_member(tontine_id: str, body: MemberInvite, db: Session = Depends(get
 
 
 @router.post("/join/{code}", summary="Rejoindre via code d'invitation")
-def join_by_code(code: str, user_id: str, db: Session = Depends(get_db)):
+def join_by_code(code: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     tontine = db.query(Tontine).filter(
         Tontine.invite_code == code.upper()
     ).first()
     if not tontine:
         raise HTTPException(404, "Code invalide ou expiré")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(404, "Utilisateur introuvable")
+    user = current_user
 
     # Déjà membre ?
     existing = db.query(TontineMember).filter(
@@ -109,6 +110,10 @@ def join_by_code(code: str, user_id: str, db: Session = Depends(get_db)):
         db.add(payment)
 
     db.commit()
+    # Notifie le gérant
+    notify_new_member(db, str(tontine.manager_id), user.name, tontine.name)
+    db.commit()
+
     return {
         "message": f"Tu as rejoint {tontine.name} !",
         "tontine_id": str(tontine.id),
@@ -117,10 +122,14 @@ def join_by_code(code: str, user_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/{tontine_id}/{member_id}", summary="Supprimer un membre")
-def remove_member(tontine_id: str, member_id: str, db: Session = Depends(get_db)):
+def remove_member(tontine_id: str, member_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
+
+    # Autorise seulement le gérant
+    if str(tontine.manager_id) != str(current_user.id):
+        raise HTTPException(403, "Action réservée au gérant")
 
     # Empêche de supprimer le gérant
     if str(tontine.manager_id) == member_id:
@@ -150,49 +159,4 @@ def remove_member(tontine_id: str, member_id: str, db: Session = Depends(get_db)
     return {"message": "Membre retiré de la tontine"}
 
 
-@router.post("/join/{code}", summary="Rejoindre une tontine via code")
-def join_by_code(code: str, user_id: str, db: Session = Depends(get_db)):
-    tontine = db.query(Tontine).filter(
-        Tontine.invite_code == code.upper()
-    ).first()
-    if not tontine:
-        raise HTTPException(404, "Code invalide ou expiré")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(404, "Utilisateur introuvable")
-
-    existing = db.query(TontineMember).filter(
-        TontineMember.tontine_id == tontine.id,
-        TontineMember.user_id == user.id,
-    ).first()
-    if existing:
-        raise HTTPException(400, "Tu es déjà membre de cette tontine")
-
-    order_index = len(tontine.members) + 1
-    member = TontineMember(tontine_id=tontine.id, user_id=user.id, order_index=order_index)
-    db.add(member)
-    db.flush()
-
-    cycle = db.query(Cycle).filter(
-        Cycle.tontine_id == tontine.id,
-        Cycle.cycle_number == tontine.current_cycle,
-    ).first()
-    if cycle:
-        payment = Payment(
-            cycle_id=cycle.id,
-            member_id=user.id,
-            amount=tontine.contribution_amount,
-        )
-        db.add(payment)
-
-    # Notifie le gérant
-    from ..services.notifications import notify_new_member
-    notify_new_member(db, str(tontine.manager_id), user.name, tontine.name)
-
-    db.commit()
-    return {
-        "message": f"Tu as rejoint {tontine.name} !",
-        "tontine_id": str(tontine.id),
-        "tontine_name": tontine.name,
-    }
+# Redundant join_by_code removed.

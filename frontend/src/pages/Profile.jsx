@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUser, useClerk } from "@clerk/clerk-react";
 import { getProfile, updateProfile, getFinancials, joinByCode, updateAvatar, deleteAccount } from "../api/client";
-import { useAuth } from "../hooks/useAuth";
 import NotificationBell from "../components/NotificationBell";
 
 const AVATARS = ["🌿","🌱","🌳","🦁","🐘","🦊","🌺","⭐","🎯","💎","🔥","🌙","☀️","🎵","🏆"];
 
 export default function Profile() {
   const navigate  = useNavigate();
-  const { getUser, logout } = useAuth();
-  const user = getUser();
+  const { user: clerkUser } = useUser();
+  const { signOut } = useClerk();
   const qc  = useQueryClient();
 
   const [editMode, setEditMode]         = useState(false);
@@ -25,24 +25,22 @@ export default function Profile() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 3000); }
 
   const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
-    queryFn:  () => getProfile(user.id),
-    enabled:  !!user?.id,
+    queryKey: ["profile", clerkUser?.id],
+    queryFn:  () => getProfile(),
+    enabled:  !!clerkUser,
     onSuccess: (d) => setForm({ name: d.name, phone: d.phone }),
   });
 
   const { data: summary } = useQuery({
-    queryKey: ["summary", user?.id],
-    queryFn:  () => getFinancials(user.id),
-    enabled:  !!user?.id,
+    queryKey: ["summary", clerkUser?.id],
+    queryFn:  () => getFinancials(),
+    enabled:  !!clerkUser,
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => updateProfile(user.id, data),
+    mutationFn: (data) => updateProfile(data),
     onSuccess: (data) => {
-      const stored = JSON.parse(localStorage.getItem("kolo_user") || "{}");
-      localStorage.setItem("kolo_user", JSON.stringify({ ...stored, name: data.name }));
-      qc.invalidateQueries(["profile", user.id]);
+      qc.invalidateQueries(["profile"]);
       setEditMode(false);
       showToast("Profil mis à jour ✓");
     },
@@ -50,9 +48,9 @@ export default function Profile() {
   });
 
   const avatarMutation = useMutation({
-    mutationFn: (avatar) => updateAvatar(user.id, avatar),
+    mutationFn: (avatar) => updateAvatar(avatar),
     onSuccess: () => {
-      qc.invalidateQueries(["profile", user.id]);
+      qc.invalidateQueries(["profile"]);
       setShowAvatars(false);
       showToast("Avatar mis à jour ✓");
     },
@@ -75,7 +73,7 @@ export default function Profile() {
       setJoinMsg(data.message);
       setJoinCode("");
       setJoinError("");
-      qc.invalidateQueries(["tontines", user.id]);
+      qc.invalidateQueries(["tontines"]);
       showToast(data.message);
     },
     onError: (e) => setJoinError(e.response?.data?.detail || "Code invalide"),
@@ -91,7 +89,7 @@ export default function Profile() {
         <button onClick={() => navigate("/")}
           className="text-slate-400 hover:text-white text-xl min-h-0 p-0 bg-transparent border-none flex-shrink-0">←</button>
         <span className="font-black text-base flex-1">Mon profil</span>
-        <NotificationBell userId={user?.id} />
+        <NotificationBell />
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-4 pb-24">
@@ -242,7 +240,7 @@ export default function Profile() {
         )}
 
         {/* Déconnexion */}
-        <button onClick={logout}
+        <button onClick={() => signOut(() => navigate("/login"))}
           className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-2xl text-sm transition border-none">
           🚪 Se déconnecter
         </button>

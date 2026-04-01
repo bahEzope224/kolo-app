@@ -17,6 +17,15 @@ def notify_payment_validated(db: Session, member_id: str, member_name: str, amou
     )
 
 
+def notify_beneficiary(db: Session, user_id: str, amount: float, tontine_name: str, cycle: int):
+    create_notif(
+        db, user_id,
+        NotifType.beneficiary,
+        f"🎲 Bénéficiaire du cycle {cycle}",
+        f"Félicitations ! Tu as été désigné(e) bénéficiaire de {amount}€ pour la tontine {tontine_name}.",
+    )
+
+
 # def notify_beneficiary_all(db: Session, member_ids: list, beneficiary_name: str, amount: float, cycle: int):
 #     for uid in member_ids:
 #         create_notif(
@@ -43,4 +52,14 @@ def notify_late_members(db: Session, late_member_ids: list, tontine_name: str):
             NotifType.late_reminder,
             "Rappel versement ⏰",
             f"Ton versement pour la tontine {tontine_name} est en attente. Contacte ton gérant.",
+        )
+
+
+def notify_cycle_start(db: Session, member_ids: list, tontine_name: str, cycle: int):
+    for uid in member_ids:
+        create_notif(
+            db, uid,
+            NotifType.new_cycle,
+            f"Début du cycle {cycle} 🚀",
+            f"Un nouveau cycle a commencé pour {tontine_name}. N'oublie pas ton versement.",
         )
