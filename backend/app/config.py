@@ -13,9 +13,10 @@ class Settings(BaseSettings):
     
     clerk_secret_key: Optional[str] = None
     clerk_publishable_key: Optional[str] = None
+    clerk_jwt_issuer: Optional[str] = None # URL de l'instance Clerk pour la validation
 
     environment: str = "development"
-    cors_origins: str = "https://kolo-app-two.vercel.app/"
+    cors_origins: str = "https://kolo-app-two.vercel.app/,http://localhost:5173"
 
     class Config:
         env_file = ".env"
