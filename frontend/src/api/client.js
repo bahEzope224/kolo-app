@@ -130,10 +130,15 @@ export const updateTontineSettings = (tontineId, data) =>
 export const deleteTontine = (tontineId) =>
   api.delete(`/tontines/${tontineId}`).then(r => r.data);
 
+// ── Administration ─────────────────────────────────────────
 export const getAdminStats = () =>
-  api.get("/users/admin/stats").then(r => r.data);
+  api.get("/admin/stats").then(r => r.data);
 export const getAdminUsers = (search) =>
-  api.get("/users/admin/users", { params: { search } }).then(r => r.data);
+  api.get("/admin/users", { params: { search } }).then(r => r.data);
+export const getAdminTontines = (search) =>
+  api.get("/admin/tontines", { params: { search } }).then(r => r.data);
+export const deleteAdminTontine = (tontineId) =>
+  api.delete(`/admin/tontines/${tontineId}`).then(r => r.data);
 
 export const requestTransfer  = (data)               => api.post("/transfer/request", data).then(r => r.data);
 export const respondTransfer  = (transferId, accept)  => api.post(`/transfer/${transferId}/respond?accept=${accept}`).then(r => r.data);

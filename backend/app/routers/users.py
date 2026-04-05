@@ -57,54 +57,6 @@ def get_my_profile(current_user: User = Depends(get_current_user)):
     }
 
 
-# ── ROUTES ADMINISTRATION ──────────────────────────────────
-
-@router.get("/admin/stats", summary="Statistiques globales (Admin)")
-def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if not current_user.is_admin:
-        raise HTTPException(403, "Accès réservé à l'administrateur")
-
-    total_users    = db.query(User).count()
-    total_tontines = db.query(Tontine).count()
-    total_members  = db.query(TontineMember).count()
-    total_payments = db.query(Payment).filter(Payment.is_validated == True).count()
-    total_amount   = db.query(Payment).filter(
-        Payment.is_validated == True
-    ).with_entities(func.sum(Payment.amount)).scalar() or 0
-
-    return {
-        "total_users":    total_users,
-        "total_tontines": total_tontines,
-        "total_members":  total_members,
-        "total_payments": total_payments,
-        "total_amount":   float(total_amount),
-    }
-
-
-@router.get("/admin/users", summary="Liste des utilisateurs (Admin)")
-def get_admin_users(search: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if not current_user.is_admin:
-        raise HTTPException(403, "Accès réservé à l'administrateur")
-    
-    query = db.query(User)
-    if search:
-        sf = f"%{search}%"
-        query = query.filter((User.name.ilike(sf)) | (User.email.ilike(sf)))
-    
-    users = query.order_by(User.created_at.desc()).limit(50).all()
-    return [
-        {
-            "id": str(u.id),
-            "name": u.name,
-            "email": u.email,
-            "phone": u.phone,
-            "avatar": u.avatar,
-            "is_admin": u.is_admin,
-            "created_at": u.created_at.isoformat() if u.created_at else None
-        } for u in users
-    ]
-
-
 # ── GESTION PROFIL ───────────────────────────────────────
 
 @router.put("/me", summary="Mettre à jour mon profil")

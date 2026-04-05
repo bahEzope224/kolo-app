@@ -63,3 +63,12 @@ def notify_cycle_start(db: Session, member_ids: list, tontine_name: str, cycle: 
             f"Début du cycle {cycle} 🚀",
             f"Un nouveau cycle a commencé pour {tontine_name}. N'oublie pas ton versement.",
         )
+
+
+def notify_tontine_deleted_by_admin(db: Session, manager_id: str, tontine_name: str):
+    create_notif(
+        db, manager_id,
+        NotifType.late_reminder,
+        "Tontine supprimée ⚠️",
+        f"Ta tontine '{tontine_name}' a été supprimée par l'administrateur pour non-respect des règles.",
+    )
