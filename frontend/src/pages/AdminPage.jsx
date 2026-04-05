@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { useState, useEffect } from "react";
 import { getAdminStats, getAdminUsers } from "../api/client";
+import UserAvatar from "../components/UserAvatar";
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -118,9 +119,7 @@ export default function AdminPage() {
             ) : users?.length > 0 ? (
               users.map(u => (
                 <div key={u.id} className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-4 transition hover:shadow-md hover:border-slate-200">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-2xl flex-shrink-0">
-                    {u.avatar || "👤"}
-                  </div>
+                  <UserAvatar user={u} size="md" className="rounded-2xl" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-black text-slate-800 truncate">{u.name}</span>
