@@ -1,5 +1,8 @@
 import random
+import logging
+import traceback
 from datetime import datetime
+from uuid import UUID
 from typing import Optional, List
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +20,7 @@ from ..services.notifications import (
 )
 from ..deps import get_current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["Versements"])
 
 
@@ -264,41 +268,50 @@ def draw_beneficiary(
 
 
 @router.post("/tontine/{tontine_id}/close-cycle", summary="Clôturer le cycle actuel")
-def close_cycle(tontine_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
-    if not tontine:
-        raise HTTPException(404, "Tontine introuvable")
+def close_cycle(tontine_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+        if not tontine:
+            raise HTTPException(404, "Tontine introuvable")
 
-    if str(tontine.manager_id) != str(current_user.id):
-        raise HTTPException(403, "Action réservée au gérant")
+        if str(tontine.manager_id) != str(current_user.id):
+            raise HTTPException(403, "Action réservée au gérant")
 
-    cycle = db.query(Cycle).filter(
-        Cycle.tontine_id == tontine_id,
-        Cycle.cycle_number == tontine.current_cycle,
-    ).first()
-    if not cycle:
-        raise HTTPException(400, "Cycle introuvable")
-    if not cycle.beneficiary_id:
-        raise HTTPException(400, "Désigne un bénéficiaire avant de clôturer")
+        cycle = db.query(Cycle).filter(
+            Cycle.tontine_id == tontine.id,
+            Cycle.cycle_number == tontine.current_cycle,
+        ).first()
+        
+        if not cycle:
+            raise HTTPException(400, "Cycle introuvable")
+        if not cycle.beneficiary_id:
+            raise HTTPException(400, "Désigne un bénéficiaire avant de clôturer")
 
-    cycle.completed_at = datetime.utcnow()
-    tontine.current_cycle += 1
+        cycle.completed_at = datetime.utcnow()
+        tontine.current_cycle += 1
 
-    new_cycle = Cycle(tontine_id=tontine_id, cycle_number=tontine.current_cycle)
-    db.add(new_cycle)
-    db.flush()
+        new_cycle = Cycle(tontine_id=tontine.id, cycle_number=tontine.current_cycle)
+        db.add(new_cycle)
+        db.flush()
 
-    for m in tontine.members:
-        payment = Payment(
-            cycle_id=new_cycle.id,
-            member_id=m.user_id,
-            amount=tontine.contribution_amount,
-        )
-        db.add(payment)
+        for m in tontine.members:
+            payment = Payment(
+                cycle_id=new_cycle.id,
+                member_id=m.user_id,
+                amount=tontine.contribution_amount,
+            )
+            db.add(payment)
 
-    notify_cycle_start(db, [str(m.user_id) for m in tontine.members], tontine.name, tontine.current_cycle)
-    db.commit()
-    return {"message": f"Cycle {cycle.cycle_number} clôturé", "new_cycle": tontine.current_cycle}
+        notify_cycle_start(db, [str(m.user_id) for m in tontine.members], tontine.name, tontine.current_cycle)
+        db.commit()
+        return {"message": f"Cycle {cycle.cycle_number} clôturé", "new_cycle": tontine.current_cycle}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        error_trace = traceback.format_exc()
+        logger.error(f"ERREUR close_cycle pour tontine {tontine_id}: {str(e)}\n{error_trace}")
+        raise HTTPException(500, f"Erreur lors de la clôture : {str(e)}")
 
 
 @router.post("/tontine/{tontine_id}/remind-late", summary="Rappel membres en retard")
