@@ -106,9 +106,6 @@ export const joinByCode      = (code)     => api.post(`/members/join/${code}`).t
 export const getTontineByCode = (code) =>
   api.get(`/tontines/join/${code}`).then(r => r.data);
 
-export const onboarding = (data) =>
-  api.post("/users/onboarding", data).then(r => r.data);
-
 export const updateAvatar       = (avatar) =>
   api.put(`/users/me/avatar?avatar=${encodeURIComponent(avatar)}`).then(r => r.data);
 

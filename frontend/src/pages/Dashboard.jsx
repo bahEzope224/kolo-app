@@ -191,21 +191,18 @@ function CreateTontineForm({ onSuccess, onCancel }) {
 }
 
 // ── Rejoindre via code ────────────────────────────────────
-function JoinTontineCard({ onSuccess }) {
-  const qc = useQueryClient();
-  const [code, setCode]   = useState("");
+function JoinTontineCard() {
+  const navigate = useNavigate();
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
-  const mutation = useMutation({
-    mutationFn: () => joinByCode(code.trim().toUpperCase()),
-    onSuccess: (data) => {
-      qc.invalidateQueries(["tontines"]);
-      setCode("");
-      setError("");
-      onSuccess(data.tontine_name);
-    },
-    onError: (e) => setError(e.response?.data?.detail || "Code invalide"),
-  });
+  const handleJoin = () => {
+    if (code.length < 4) {
+      setError("Le code est trop court");
+      return;
+    }
+    navigate(`/join/${code.trim().toUpperCase()}`);
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-4">
@@ -214,13 +211,20 @@ function JoinTontineCard({ onSuccess }) {
         <span className="font-bold text-slate-700 text-sm">Rejoindre avec un code</span>
       </div>
       <div className="flex gap-2">
-        <input type="text" placeholder="ABC123" value={code} maxLength={6}
+        <input 
+          type="text" 
+          placeholder="Ex: ABC123" 
+          value={code} 
+          maxLength={6}
           onChange={e => { setCode(e.target.value.toUpperCase()); setError(""); }}
-          className="flex-1 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-base font-black text-center tracking-widest uppercase focus:outline-none focus:border-emerald-400 transition"/>
-        <button onClick={() => mutation.mutate()}
-          disabled={mutation.isPending || code.length < 4}
-          className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white font-black px-4 rounded-xl border-none min-h-0 transition text-sm">
-          {mutation.isPending ? "…" : "OK"}
+          className="flex-1 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-base font-black text-center tracking-widest uppercase focus:outline-none focus:border-emerald-400 transition"
+        />
+        <button 
+          onClick={handleJoin}
+          disabled={code.length < 4}
+          className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white font-black px-4 rounded-xl border-none min-h-0 transition text-sm"
+        >
+          OK
         </button>
       </div>
       {error && <p className="text-red-500 text-xs mt-2">{error}</p>}

@@ -27,8 +27,8 @@ class Tontine(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     manager = relationship("User", foreign_keys=[manager_id])
-    members = relationship("TontineMember", back_populates="tontine")
-    cycles = relationship("Cycle", back_populates="tontine")
+    members = relationship("TontineMember", back_populates="tontine", cascade="all, delete-orphan")
+    cycles = relationship("Cycle", back_populates="tontine", cascade="all, delete-orphan")
     welcome_message      = Column(String(300), nullable=True)
     show_next_beneficiary = Column(Boolean, default=False)
     payment_day          = Column(Integer, default=1)

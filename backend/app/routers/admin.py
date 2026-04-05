@@ -1,4 +1,6 @@
+import logging
 from typing import Optional
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -9,6 +11,7 @@ from ..models.payment import Payment, TontineMember, Cycle
 from ..deps import get_current_user
 from ..services.notifications import notify_tontine_deleted_by_admin
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
@@ -39,7 +42,7 @@ def get_admin_stats(db: Session = Depends(get_db), current_user: User = Depends(
         "total_amount":   float(total_amount),
     }
 
-    
+
 @router.get("/users", summary="Liste des utilisateurs (Admin)")
 def get_admin_users(search: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     check_admin(current_user)
@@ -96,24 +99,29 @@ def get_admin_tontines(
 
 @router.delete("/tontines/{tontine_id}", summary="Supprimer une tontine (Admin)")
 def delete_admin_tontine(
-    tontine_id: str,
+    tontine_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     check_admin(current_user)
     
-    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
-    if not tontine:
-        raise HTTPException(404, "Tontine introuvable")
-    
-    tontine_name = tontine.name
-    manager_id = str(tontine.manager_id)
-    
-    # Notification au gérant
-    notify_tontine_deleted_by_admin(db, manager_id, tontine_name)
-    
-    # Suppression (la cascade s'occupe des membres, cycles, payments selon le modèle)
-    db.delete(tontine)
-    db.commit()
-    
-    return {"message": f"Tontine '{tontine_name}' supprimée avec succès."}
+    try:
+        tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+        if not tontine:
+            raise HTTPException(404, "Tontine introuvable")
+        
+        tontine_name = tontine.name
+        manager_id = str(tontine.manager_id)
+        
+        # Notification au gérant
+        notify_tontine_deleted_by_admin(db, manager_id, tontine_name)
+        
+        # Suppression (la cascade s'occupe des membres, cycles, payments selon le modèle)
+        db.delete(tontine)
+        db.commit()
+        
+        return {"message": f"Tontine '{tontine_name}' supprimée avec succès."}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erreur lors de la suppression de la tontine {tontine_id}: {str(e)}")
+        raise HTTPException(500, f"Erreur interne lors de la suppression: {str(e)}")

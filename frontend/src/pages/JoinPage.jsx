@@ -1,215 +1,206 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTontineByCode, onboarding, requestOtp, verifyOtp } from "../api/client";
+import { useUser, useAuth, useClerk } from "@clerk/clerk-react";
+import { getTontineByCode, joinByCode } from "../api/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function JoinPage() {
   const { code } = useParams();
   const navigate = useNavigate();
+  const { user: clerkUser, isSignedIn, isLoaded: userLoaded } = useUser();
+  const { openSignUp, openSignIn } = useClerk();
+  const queryClient = useQueryClient();
 
-  const [tontine, setTontine]   = useState(null);
+  const [tontine, setTontine] = useState(null);
   const [notFound, setNotFound] = useState(false);
-  const [step, setStep]         = useState("info");   // info | code | done
-  const [name, setName]         = useState("");
-  const [phone, setPhone]       = useState("");
-  const [otp, setOtp]           = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-  // Charge les infos de la tontine
+  // 1. Charger les infos de la tontine dès l'arrivée
   useEffect(() => {
-    getTontineByCode(code)
-      .then(setTontine)
-      .catch(() => setNotFound(true));
+    if (code) {
+      getTontineByCode(code.toUpperCase())
+        .then(setTontine)
+        .catch(() => setNotFound(true));
+    }
   }, [code]);
 
-  async function handleJoin() {
-    if (!name.trim())     { setError("Entre ton prénom et nom"); return; }
-    if (phone.length < 8) { setError("Entre ton numéro de téléphone"); return; }
-    setLoading(true);
-    setError("");
-    try {
-      await onboarding({ name, phone, invite_code: code });
-      await requestOtp(phone);        // ← phone directement, pas un objet
-      setStep("code");
-    } catch (e) {
-      setError(e.response?.data?.detail || "Une erreur est survenue");
-    } finally {
-      setLoading(false);
+  // 2. Logique d'adhésion
+  const joinMutation = useMutation({
+    mutationFn: (c) => joinByCode(c),
+    onSuccess: (data) => {
+      setSuccess(true);
+      queryClient.invalidateQueries(["my-tontines"]);
+      setTimeout(() => {
+        navigate(`/tontine/${data.tontine_id}`);
+      }, 2500);
+    },
+    onError: (err) => {
+      setError(err.response?.data?.detail || "Une erreur est survenue lors de l'adhésion.");
+      setIsJoining(false);
     }
-  }
+  });
 
-  async function handleVerify() {
-    if (otp.length !== 6) { setError("Le code fait 6 chiffres"); return; }
-    setLoading(true);
-    setError("");
-    try {
-      const response = await verifyOtp(phone, otp);
-      const data = response.data;
-  
-      const token = data.access_token;
-      const user  = JSON.stringify({ id: data.user_id, name: data.name, phone: phone });
-  
-      try {
-        localStorage.setItem("kolo_token", token);
-        localStorage.setItem("kolo_user", user);
-      } catch (e) {
-        sessionStorage.setItem("kolo_token", token);
-        sessionStorage.setItem("kolo_user", user);
-      }
-  
-      setStep("done");
-      setTimeout(() => { window.location.href = "/"; }, 2000);
-    } catch (e) {
-      setError("Code incorrect ou expiré. Réessaie.");
-    } finally {
-      setLoading(false);
-    }
+  const handleConfirmJoin = () => {
+    setIsJoining(true);
+    joinMutation.mutate(code);
+  };
+
+  const handleLoginToJoin = () => {
+    // On peut passer un paramètre redirect_url à Clerk
+    openSignIn({ 
+      afterSignInUrl: window.location.href,
+      afterSignUpUrl: window.location.href 
+    });
+  };
+
+  const handleSignUpToJoin = () => {
+    openSignUp({ 
+      afterSignUpUrl: window.location.href,
+      afterSignInUrl: window.location.href
+    });
+  };
+
+  // État de chargement initial des données
+  if (!userLoaded || (!tontine && !notFound)) {
+    return (
+      <div className="min-h-screen bg-emerald-950 flex items-center justify-center">
+        <div className="text-white font-bold animate-pulse">Chargement de l'invitation…</div>
+      </div>
+    );
   }
 
   // Tontine introuvable
-  if (notFound) return (
-    <div className="min-h-screen bg-emerald-950 flex items-center justify-center px-4">
-      <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center">
-        <div className="text-5xl mb-4">😕</div>
-        <h2 className="font-black text-xl text-slate-800 mb-2">Lien invalide</h2>
-        <p className="text-slate-500 text-sm mb-6">Ce code d'invitation n'existe pas ou a expiré.</p>
-        <button onClick={() => navigate("/login")}
-          className="w-full bg-emerald-500 text-white font-black py-3 rounded-xl border-none">
-          Aller à la connexion
-        </button>
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-emerald-950 flex items-center justify-center px-4">
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+          <div className="text-5xl mb-4">😕</div>
+          <h2 className="font-black text-xl text-slate-800 mb-2">Lien invalide</h2>
+          <p className="text-slate-500 text-sm mb-6">Ce code d'invitation n'existe pas ou a expiré.</p>
+          <button onClick={() => navigate("/")}
+            className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl border-none transition hover:bg-slate-800">
+            Retour à l'accueil
+          </button>
+        </div>
       </div>
-    </div>
-  );
-
-  // Chargement
-  if (!tontine) return (
-    <div className="min-h-screen bg-emerald-950 flex items-center justify-center">
-      <div className="text-white font-bold">Chargement…</div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-emerald-950 flex items-center justify-center px-4">
-      <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">
-
-        {/* Header tontine */}
-        <div className="bg-emerald-600 px-6 py-8 text-center">
-          <div className="text-4xl mb-3">🌿</div>
-          <div className="text-white font-black text-2xl mb-1">{tontine.name}</div>
-          <div className="text-emerald-100 text-sm">
-            {tontine.member_count} membre{tontine.member_count > 1 ? "s" : ""} ·{" "}
-            {tontine.contribution_amount}€/mois
-          </div>
-          <div className="text-emerald-200 text-xs mt-1">
-            Géré par {tontine.manager_name}
-          </div>
+    <div className="min-h-screen bg-emerald-950 flex items-center justify-center px-4 py-12">
+      <div className="bg-white rounded-[40px] w-full max-w-sm overflow-hidden shadow-2xl relative">
+        
+        {/* En-tête avec info Tontine */}
+        <div className="bg-emerald-600 px-8 py-10 text-center relative overflow-hidden">
+          {/* Décoration asbtraite */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-400/20 rounded-full blur-2xl" />
+          
+          <div className="text-5xl mb-4 drop-shadow-lg">🌿</div>
+          <h1 className="text-white font-black text-3xl mb-1 leading-tight">{tontine.name}</h1>
+          <p className="text-emerald-100 text-sm font-medium opacity-90">Invitation à rejoindre la tontine</p>
         </div>
 
-        <div className="p-6">
-
-          {/* ÉTAPE 1 — Infos */}
-          {step === "info" && (
+        <div className="p-8">
+          {success ? (
+            <div className="text-center py-6 animate-in fade-in zoom-in duration-500">
+              <div className="text-6xl mb-4">🎉</div>
+              <h2 className="font-black text-emerald-600 text-2xl mb-2">Bienvenue !</h2>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Tu es maintenant membre de <strong>{tontine.name}</strong>.<br/>
+                Redirection vers ton dashboard…
+              </p>
+              <div className="mt-8 flex justify-center">
+                <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            </div>
+          ) : (
             <>
-              <h2 className="font-black text-slate-800 text-lg mb-1">Rejoins la tontine</h2>
-              <p className="text-slate-500 text-sm mb-5">Entre tes infos pour créer ton compte.</p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">
-                    Ton prénom et nom
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Aminata Diallo"
-                    value={name}
-                    onChange={e => { setName(e.target.value); setError(""); }}
-                    className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-emerald-400 transition"
-                  />
+              {/* Détails de la tontine */}
+              <div className="bg-slate-50 rounded-3xl p-5 mb-8 border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Versement mensuel</span>
+                  <span className="bg-emerald-100 text-emerald-700 font-black px-3 py-1 rounded-full text-sm">
+                    {tontine.contribution_amount}€ / mois
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 mb-1.5">
-                    Ton numéro de téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+33 6 12 34 56 78"
-                    inputMode="tel"
-                    value={phone}
-                    onChange={e => { setPhone(e.target.value); setError(""); }}
-                    className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-emerald-400 transition"
-                  />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Membres actuels</span>
+                  <span className="text-slate-700 font-bold text-sm">
+                    👤 {tontine.member_count} membres
+                  </span>
                 </div>
-
-                {error && (
-                  <p className="text-red-500 text-sm">{error}</p>
-                )}
-
-                <button
-                  onClick={handleJoin}
-                  disabled={loading}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition border-none"
-                >
-                  {loading ? "Création du compte…" : "Rejoindre la tontine →"}
-                </button>
+                <div className="mt-4 pt-4 border-t border-slate-200/50 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs text-white font-bold">
+                    {tontine.manager_name?.charAt(0) || "G"}
+                  </div>
+                  <div className="text-[11px] text-slate-500 leading-tight">
+                    Gérée par <span className="font-bold text-slate-800">{tontine.manager_name}</span>
+                  </div>
+                </div>
               </div>
 
-              <p className="text-center text-xs text-slate-400 mt-4">
-                Tu as déjà un compte ?{" "}
-                <button onClick={() => navigate("/login")}
-                  className="text-emerald-600 font-bold underline bg-transparent border-none">
-                  Connexion
-                </button>
-              </p>
+              {isSignedIn ? (
+                <div className="space-y-4">
+                  <div className="text-center mb-6">
+                    <p className="text-slate-600 text-sm">
+                      Salut <strong>{clerkUser.firstName || "à toi"}</strong> ! 👋<br/>
+                      Confirme ton adhésion ci-dessous.
+                    </p>
+                  </div>
+                  
+                  {error && (
+                    <div className="bg-red-50 text-red-600 text-xs p-3 rounded-xl font-bold border border-red-100 mb-4 animate-in shake-2">
+                       ⚠️ {error}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleConfirmJoin}
+                    disabled={isJoining}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl text-lg shadow-lg shadow-emerald-600/20 transition-all active:scale-[0.98] border-none flex items-center justify-center gap-2"
+                  >
+                    {isJoining ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      "Confirmer l'adhésion 🤝"
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center mb-6">
+                    <p className="text-slate-500 text-sm leading-relaxed">
+                      Tu dois avoir un compte Kolo pour participer à cette tontine.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleSignUpToJoin}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl text-lg shadow-lg shadow-emerald-500/20 transition active:scale-[0.98] border-none mb-3"
+                  >
+                    Créer mon compte
+                  </button>
+                  
+                  <button
+                    onClick={handleLoginToJoin}
+                    className="w-full bg-white hover:bg-slate-50 text-slate-600 font-bold py-3 text-sm transition border-none rounded-xl"
+                  >
+                    J'ai déjà un compte (Connexion)
+                  </button>
+                </div>
+              )}
             </>
           )}
+        </div>
 
-          {/* ÉTAPE 2 — Code OTP */}
-          {step === "code" && (
-            <>
-              <h2 className="font-black text-slate-800 text-lg mb-1">Vérifie ton numéro</h2>
-              <p className="text-slate-500 text-sm mb-5">
-                Code envoyé au <strong>{phone}</strong>
-              </p>
-
-              <input
-                type="number"
-                placeholder="123456"
-                inputMode="numeric"
-                value={otp}
-                onChange={e => { setOtp(e.target.value.slice(0, 6)); setError(""); }}
-                className="w-full border-2 border-slate-200 rounded-xl px-4 py-4 text-4xl font-black text-center tracking-widest focus:outline-none focus:border-emerald-400 mb-2"
-              />
-              <p className="text-center text-xs text-slate-400 mb-4">
-                💡 En mode test : utilise le code <strong>123456</strong>
-              </p>
-
-              {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-
-              <button
-                onClick={handleVerify}
-                disabled={loading}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition border-none"
-              >
-                {loading ? "Vérification…" : "Confirmer →"}
-              </button>
-            </>
-          )}
-
-          {/* ÉTAPE 3 — Succès */}
-          {step === "done" && (
-            <div className="text-center py-4">
-              <div className="text-5xl mb-4">🎉</div>
-              <h2 className="font-black text-slate-800 text-xl mb-2">
-                Bienvenue dans {tontine.name} !
-              </h2>
-              <p className="text-slate-500 text-sm mb-4">
-                Ton compte est créé. Redirection vers ton dashboard…
-              </p>
-              <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            </div>
-          )}
-
+        {/* Footer simple */}
+        <div className="px-8 pb-8 text-center">
+          <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
+            Sécurisé par Clerk & Kolo
+          </p>
         </div>
       </div>
     </div>

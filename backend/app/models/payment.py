@@ -30,7 +30,7 @@ class Cycle(Base):
     completed_at = Column(DateTime, nullable=True)
 
     tontine = relationship("Tontine", back_populates="cycles")
-    payments = relationship("Payment", back_populates="cycle")
+    payments = relationship("Payment", back_populates="cycle", cascade="all, delete-orphan")
 
 
 class Payment(Base):
