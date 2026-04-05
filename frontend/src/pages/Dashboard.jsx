@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser, useClerk } from "@clerk/clerk-react";
 import { getProfile, getMemberTontines, getFinancials, getPendingTransfers, respondTransfer, joinByCode, createTontine } from "../api/client";
 import NotificationBell from "../components/NotificationBell";
+import UserAvatar from "../components/UserAvatar";
 import api from "../api/client";
 
 // ── API ───────────────────────────────────────────────────
@@ -25,9 +26,7 @@ function TontineCard({ tontine, onClick }) {
     <button onClick={onClick}
       className="w-full text-left bg-white rounded-2xl border border-slate-100 p-4 hover:border-emerald-300 hover:shadow-sm transition group">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 bg-emerald-100 rounded-xl flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-emerald-200 transition">
-          🌿
-        </div>
+        <UserAvatar user={tontine} size="md" className="group-hover:bg-emerald-200 transition" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-black text-slate-800 text-sm truncate">{tontine.name}</span>
@@ -269,7 +268,7 @@ function FinancialSummary() {
             <button key={t.tontine_id}
               onClick={() => navigate(`/tontine/${t.tontine_id}`)}
               className="w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition min-h-0 bg-transparent text-left">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-sm flex-shrink-0">🌿</div>
+              <UserAvatar user={{ avatar: "🌿", name: t.tontine_name }} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-slate-800 text-xs truncate">{t.tontine_name}</div>
                 <div className="text-slate-400 text-[10px]">{t.is_manager ? "👑 Gérant" : "👥 Membre"}</div>
@@ -332,8 +331,9 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <NotificationBell />
           <button onClick={() => navigate("/profile")}
-            className="sm:hidden w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0">
-            {profile?.name?.charAt(0) || user?.firstName?.charAt(0) || user?.username?.charAt(0) || "?"}
+            className="sm:hidden min-h-0 p-0 bg-transparent border-none"
+          >
+            <UserAvatar user={profile || user} size="sm" className="border-none" />
           </button>
           <button onClick={() => signOut(() => navigate("/login"))}
             className="hidden sm:block text-xs text-slate-400 hover:text-white underline min-h-0 py-1 px-0 bg-transparent border-none ml-1 transition">

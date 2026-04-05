@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 import requests
+import base64
 import json
 from sqlalchemy.orm import Session
 from .database import get_db
@@ -17,30 +18,40 @@ _jwks_cache = None
 def get_jwks():
     global _jwks_cache
     if _jwks_cache is None:
-        # Tente de dériver l'URL Clerk (format: pk_test_XXXXXXXXX... ou pk_live_XXXXXXXXX...)
-        # Si on ne l'a pas, on utilise une valeur par défaut ou paramétrée
         url = None
-        if settings.clerk_publishable_key:
-             # Exemple: pk_test_dW5iaWFzZWQtZ3JvdXNlLTMwLmNsZXJrLmFjY291bnRzLmRldiQ
-             # Le domaine est souvent à l'intérieur ou paramétré
-             # Pour plus de robustesse, on devrait avoir CLERK_JWT_ISSUER
-             parts = settings.clerk_publishable_key.split('_')
-             if len(parts) >= 3:
-                 # Tentative simpliste si non encodé
-                 domain = parts[2]
-                 url = f"https://{domain}/.well-known/jwks.json"
+        
+        # 1. Priorité à la configuration explicite
+        if settings.clerk_jwt_issuer:
+            url = f"{settings.clerk_jwt_issuer.rstrip('/')}/.well-known/jwks.json"
+            
+        # 2. Sinon, on tente de décoder la Publishable Key (format pk_test_XXXX)
+        elif settings.clerk_publishable_key:
+             try:
+                 parts = settings.clerk_publishable_key.split('_')
+                 if len(parts) >= 3:
+                     # Le domaine est dans la 3ème partie, encodé en base64
+                     encoded_domain = parts[2]
+                     # On ajoute du padding si nécessaire pour base64
+                     padding = '=' * (4 - len(encoded_domain) % 4)
+                     decoded_domain = base64.b64decode(encoded_domain + padding).decode('utf-8')
+                     # Parfois fini par $, on nettoie
+                     domain = decoded_domain.replace('$', '')
+                     url = f"https://{domain}/.well-known/jwks.json"
+             except Exception as e:
+                 print(f"Erreur lors du décodage de la clef Clerk: {e}")
 
-        # Fallback si l'auto-détection échoue ou si on veut forcer via config
+        # 3. Fallback ultime (souvent faux, mais évite le None)
         if not url:
-            # On pourrait utiliser un réglage dédié settings.clerk_api_url
-            # Par défaut pour de nombreux tests :
             url = "https://clerk.accounts.dev/.well-known/jwks.json"
         
         try:
+            print(f"INFO: Récupération des JWKS depuis {url}")
             response = requests.get(url, timeout=5)
+            response.raise_for_status()
             _jwks_cache = response.json()
         except Exception as e:
-            print(f"Erreur lors de la récupération des JWKS Clerk: {e}")
+            if "clerk.accounts.dev" not in url:
+                print(f"Erreur lors de la récupération des JWKS Clerk: {e}")
             return None
     return _jwks_cache
 

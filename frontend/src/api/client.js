@@ -112,6 +112,14 @@ export const onboarding = (data) =>
 export const updateAvatar       = (avatar) =>
   api.put(`/users/me/avatar?avatar=${encodeURIComponent(avatar)}`).then(r => r.data);
 
+export const uploadAvatar       = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post("/users/me/avatar/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }).then(r => r.data);
+};
+
 export const deleteAccount      = () =>
   api.delete(`/users/me`).then(r => r.data);
 export const syncUser = (name, email) => 

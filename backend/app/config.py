@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_origins: str = "https://kolo-app-two.vercel.app/,http://localhost:5173"
 
+    # Cloudflare R2 Settings
+    r2_account_id: Optional[str] = None
+    r2_access_key_id: Optional[str] = None
+    r2_secret_access_key: Optional[str] = None
+    r2_bucket_name: str = "kolo-app"
+    r2_public_url_prefix: Optional[str] = None  # ex: https://pub-xxx.r2.dev
+
     class Config:
         env_file = ".env"
         case_sensitive = False

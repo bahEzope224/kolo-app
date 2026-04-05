@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser, useClerk } from "@clerk/clerk-react";
-import { getProfile, updateProfile, getFinancials, joinByCode, updateAvatar, deleteAccount } from "../api/client";
+import { getProfile, updateProfile, getFinancials, joinByCode, updateAvatar, uploadAvatar, deleteAccount } from "../api/client";
 import NotificationBell from "../components/NotificationBell";
+import UserAvatar from "../components/UserAvatar";
 
 const AVATARS = ["🌿","🌱","🌳","🦁","🐘","🦊","🌺","⭐","🎯","💎","🔥","🌙","☀️","🎵","🏆"];
 
@@ -56,6 +57,16 @@ export default function Profile() {
     },
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: (file) => uploadAvatar(file),
+    onSuccess: () => {
+      qc.invalidateQueries(["profile"]);
+      setShowAvatars(false);
+      showToast("Photo mise à jour ✓");
+    },
+    onError: (e) => showToast(e.response?.data?.detail || "Erreur d'upload"),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteAccount(user.id),
     onSuccess: () => {
@@ -100,9 +111,14 @@ export default function Profile() {
             {/* Avatar cliquable */}
             <button
               onClick={() => setShowAvatars(!showAvatars)}
-              className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 text-4xl border-4 border-white/30 min-h-0 hover:bg-white/30 transition"
+              className="mx-auto mb-3 min-h-0 bg-transparent border-none p-0 group relative"
             >
-              {avatar}
+              <UserAvatar user={profile} size="lg" className="border-4 border-white/30 group-hover:border-white/50 transition" />
+              {uploadMutation.isPending && (
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full"></div>
+                </div>
+              )}
             </button>
             <div style={{fontSize:10}} className="text-emerald-200 mb-2">Appuie pour changer</div>
             <div className="text-white font-black text-xl">{profile?.name}</div>
@@ -113,6 +129,20 @@ export default function Profile() {
               <div className="absolute left-4 right-4 top-full mt-2 bg-white rounded-2xl p-4 shadow-2xl z-10 border border-slate-100">
                 <div className="text-xs font-bold text-slate-500 mb-3">Choisis ton avatar</div>
                 <div className="grid grid-cols-5 gap-2">
+                  {/* Option Upload */}
+                  <label className="flex flex-col items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 cursor-pointer transition p-2">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) uploadMutation.mutate(e.target.files[0]);
+                      }}
+                    />
+                    <span className="text-xl">📷</span>
+                    <span className="text-[8px] font-bold text-slate-500 mt-1">Photo</span>
+                  </label>
+
                   {AVATARS.map(a => (
                     <button
                       key={a}

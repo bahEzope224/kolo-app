@@ -9,39 +9,8 @@ import AddPaymentModal from "../components/AddPaymentModal";
 import NotificationBell from "../components/NotificationBell";
 import TontineSettingsModal from "../components/TontineSettingsModal";
 import TransferModal from "../components/TransferModal";
+import UserAvatar from "../components/UserAvatar";
 
-function initials(name) {
-  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-}
-
-const STATUS = {
-  paid:    { label: "Payé ✓",     bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
-  pending: { label: "En attente", bg: "bg-amber-100",   text: "text-amber-800",   dot: "bg-amber-400"   },
-  missing: { label: "Non inscrit",bg: "bg-slate-100",   text: "text-slate-500",   dot: "bg-slate-300"   },
-};
-
-function Badge({ status }) {
-  const s = STATUS[status] || STATUS.missing;
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
-      {s.label}
-    </span>
-  );
-}
-
-function Avatar({ name, status }) {
-  const colors = {
-    paid:    "bg-emerald-100 text-emerald-700",
-    pending: "bg-amber-100 text-amber-700",
-    missing: "bg-slate-100 text-slate-500",
-  };
-  return (
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0 ${colors[status] || colors.missing}`}>
-      {initials(name)}
-    </div>
-  );
-}
 
 function ActionRow({ icon, label, sublabel, onClick, danger, disabled }) {
   return (
@@ -68,6 +37,22 @@ function Section({ title, children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+const STATUS = {
+  paid:    { label: "Payé ✓",     bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+  pending: { label: "En attente", bg: "bg-amber-100",   text: "text-amber-800",   dot: "bg-amber-400"   },
+  missing: { label: "Non inscrit",bg: "bg-slate-100",   text: "text-slate-500",   dot: "bg-slate-300"   },
+};
+
+function Badge({ status }) {
+  const s = STATUS[status] || STATUS.missing;
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+      {s.label}
+    </span>
   );
 }
 
@@ -149,8 +134,8 @@ export default function TontineDetail() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <NotificationBell />
           <button onClick={() => navigate("/profile")}
-            className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0">
-            {user?.firstName?.charAt(0) || user?.username?.charAt(0) || "?"}
+            className="min-h-0 p-0 bg-transparent border-none">
+            <UserAvatar user={{ ...user, avatar: data?.my_avatar }} size="sm" />
           </button>
         </div>
       </header>
@@ -288,7 +273,7 @@ export default function TontineDetail() {
             <div className="divide-y divide-slate-50">
               {filteredMembers.map(m => (
                 <div key={m.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition">
-                  <Avatar name={m.name} status={isGerant || data.show_payments ? m.status : "missing"} />
+                  <UserAvatar user={m} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-slate-800 text-sm truncate">{m.name}</div>
                     <div className="text-slate-400 text-xs">{m.phone}</div>

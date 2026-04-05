@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from ..database import get_db
@@ -9,6 +9,7 @@ from ..models.tontine import Tontine
 from sqlalchemy import func
 
 from ..deps import get_current_user
+from ..services.r2 import upload_file_to_r2
 
 router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 
@@ -131,6 +132,30 @@ def update_avatar(avatar: str, db: Session = Depends(get_db), current_user: User
     current_user.avatar = avatar
     db.commit()
     return {"message": "Avatar mis à jour", "avatar": avatar}
+
+
+@router.post("/me/avatar/upload", summary="Uploader une photo de profil (R2)")
+async def upload_avatar_file(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Le fichier n'est pas une image")
+    
+    # Limite à 2Mo
+    MAX_SIZE = 2 * 1024 * 1024
+    content = await file.read()
+    if len(content) > MAX_SIZE:
+        raise HTTPException(400, "L'image est trop lourde (max 2Mo)")
+
+    try:
+        url = upload_file_to_r2(content, file.filename, file.content_type)
+        current_user.avatar = url
+        db.commit()
+        return {"avatar": url}
+    except Exception as e:
+        raise HTTPException(500, f"Erreur lors de l'upload : {str(e)}")
 
 
 @router.delete("/me", summary="Supprimer son compte")

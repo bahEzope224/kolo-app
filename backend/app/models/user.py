@@ -14,7 +14,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     email = Column(String(100), unique=True, nullable=True, index=True)
-    avatar = Column(String(200), nullable=True, default="🌿")
+    avatar = Column(String, nullable=True, default="🌿")
     clerk_id = Column(String(100), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, server_default=func.now())
 

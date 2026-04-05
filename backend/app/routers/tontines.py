@@ -149,6 +149,7 @@ def get_tontine_dashboard(tontine_id: str, db: Session = Depends(get_db), curren
             "user_id": str(m.user_id),
             "name": m.user.name,
             "phone": m.user.phone,
+            "avatar": m.user.avatar,
             "payment_id": str(payment.id) if payment else None,
             "status": "paid" if (payment and payment.is_validated) else
                       "pending" if payment else "missing",
@@ -198,6 +199,7 @@ def get_tontine_dashboard(tontine_id: str, db: Session = Depends(get_db), curren
         "current_cycle": tontine.current_cycle,
         "manager_id": str(tontine.manager_id),
         "is_manager": tontine.manager_id == current_user.id,
+        "my_avatar": current_user.avatar,
         "total_amount": total_amount,
         "paid_count": paid_count,
         "member_count": len(tontine.members),
