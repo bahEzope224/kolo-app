@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { getMemberTontines, getFinancials, getPendingTransfers, respondTransfer, joinByCode } from "../api/client";
+import { useUser, useClerk } from "@clerk/clerk-react";
+import { getProfile, getMemberTontines, getFinancials, getPendingTransfers, respondTransfer, joinByCode, createTontine } from "../api/client";
 import NotificationBell from "../components/NotificationBell";
+import UserAvatar from "../components/UserAvatar";
 import api from "../api/client";
 
 // ── API ───────────────────────────────────────────────────
-const createTontineApi = (managerId, data) =>
-  api.post(`/tontines/?manager_id=${managerId}`, data).then(r => r.data);
+// Redundant createTontineApi removed, using client.js version
 
 // ── Statut paiement ───────────────────────────────────────
 const STATUS = {
@@ -26,9 +26,7 @@ function TontineCard({ tontine, onClick }) {
     <button onClick={onClick}
       className="w-full text-left bg-white rounded-2xl border border-slate-100 p-4 hover:border-emerald-300 hover:shadow-sm transition group">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 bg-emerald-100 rounded-xl flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-emerald-200 transition">
-          🌿
-        </div>
+        <UserAvatar user={tontine} size="md" className="group-hover:bg-emerald-200 transition" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-black text-slate-800 text-sm truncate">{tontine.name}</span>
@@ -58,12 +56,11 @@ function TontineCard({ tontine, onClick }) {
 }
 
 // ── Demandes de transfert ─────────────────────────────────
-function PendingTransfers({ userId }) {
+function PendingTransfers() {
   const qc = useQueryClient();
   const { data: transfers = [] } = useQuery({
-    queryKey: ["pending-transfers", userId],
-    queryFn:  () => getPendingTransfers(userId),
-    enabled:  !!userId,
+    queryKey: ["pending-transfers"],
+    queryFn:  () => getPendingTransfers(),
   });
 
   const respondMutation = useMutation({
@@ -108,7 +105,7 @@ function PendingTransfers({ userId }) {
 }
 
 // ── Formulaire création tontine ───────────────────────────
-function CreateTontineForm({ managerId, onSuccess, onCancel }) {
+function CreateTontineForm({ onSuccess, onCancel }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     name: "", contribution_amount: "", start_date: "", mode: "random",
@@ -116,8 +113,8 @@ function CreateTontineForm({ managerId, onSuccess, onCancel }) {
   const [error, setError] = useState("");
 
   const mutation = useMutation({
-    mutationFn: (data) => createTontineApi(managerId, data),
-    onSuccess: (data) => { qc.invalidateQueries(["tontines", managerId]); onSuccess(data); },
+    mutationFn: (data) => createTontine(data),
+    onSuccess: (data) => { qc.invalidateQueries(["tontines"]); onSuccess(data); },
     onError: (e) => setError(e.response?.data?.detail || "Erreur"),
   });
 
@@ -194,15 +191,15 @@ function CreateTontineForm({ managerId, onSuccess, onCancel }) {
 }
 
 // ── Rejoindre via code ────────────────────────────────────
-function JoinTontineCard({ userId, onSuccess }) {
+function JoinTontineCard({ onSuccess }) {
   const qc = useQueryClient();
   const [code, setCode]   = useState("");
   const [error, setError] = useState("");
 
   const mutation = useMutation({
-    mutationFn: () => joinByCode(code.trim().toUpperCase(), userId),
+    mutationFn: () => joinByCode(code.trim().toUpperCase()),
     onSuccess: (data) => {
-      qc.invalidateQueries(["tontines", userId]);
+      qc.invalidateQueries(["tontines"]);
       setCode("");
       setError("");
       onSuccess(data.tontine_name);
@@ -232,11 +229,10 @@ function JoinTontineCard({ userId, onSuccess }) {
 }
 
 // ── Résumé financier ──────────────────────────────────────
-function FinancialSummary({ userId }) {
+function FinancialSummary() {
   const { data: summary } = useQuery({
-    queryKey: ["summary", userId],
-    queryFn:  () => getFinancials(userId),
-    enabled:  !!userId,
+    queryKey: ["summary"],
+    queryFn:  () => getFinancials(),
   });
   const navigate = useNavigate();
 
@@ -272,7 +268,7 @@ function FinancialSummary({ userId }) {
             <button key={t.tontine_id}
               onClick={() => navigate(`/tontine/${t.tontine_id}`)}
               className="w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition min-h-0 bg-transparent text-left">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-sm flex-shrink-0">🌿</div>
+              <UserAvatar user={{ avatar: "🌿", name: t.tontine_name }} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-slate-800 text-xs truncate">{t.tontine_name}</div>
                 <div className="text-slate-400 text-[10px]">{t.is_manager ? "👑 Gérant" : "👥 Membre"}</div>
@@ -291,17 +287,23 @@ function FinancialSummary({ userId }) {
 
 // ── Page principale ───────────────────────────────────────
 export default function Dashboard() {
-  const { getUser, logout } = useAuth();
-  const user    = getUser();
+  const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [created, setCreated]   = useState(null);
   const [joinMsg, setJoinMsg]   = useState("");
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn:  () => getProfile(),
+    enabled:  isLoaded && !!user,
+  });
+
   const { data: tontines = [], isLoading } = useQuery({
-    queryKey: ["tontines", user?.id],
-    queryFn:  () => getMemberTontines(user.id),
-    enabled:  !!user?.id,
+    queryKey: ["tontines"],
+    queryFn:  () => getMemberTontines(),
+    enabled:  isLoaded && !!user,
   });
 
   const myTontines     = tontines.filter(t => t.is_manager);
@@ -324,15 +326,16 @@ export default function Dashboard() {
         </div>
         <button onClick={() => navigate("/profile")}
           className="hidden sm:block text-sm text-slate-300 hover:text-white font-semibold transition min-h-0 p-0 bg-transparent border-none">
-          {user?.name}
+          {profile?.name || user?.firstName || "Mon profil"}
         </button>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <NotificationBell userId={user?.id} />
+          <NotificationBell />
           <button onClick={() => navigate("/profile")}
-            className="sm:hidden w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0">
-            {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
+            className="sm:hidden min-h-0 p-0 bg-transparent border-none"
+          >
+            <UserAvatar user={profile || user} size="sm" className="border-none" />
           </button>
-          <button onClick={logout}
+          <button onClick={() => signOut(() => navigate("/login"))}
             className="hidden sm:block text-xs text-slate-400 hover:text-white underline min-h-0 py-1 px-0 bg-transparent border-none ml-1 transition">
             Déconnexion
           </button>
@@ -344,13 +347,13 @@ export default function Dashboard() {
         {/* Bonjour */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-black text-slate-800 text-lg">Bonjour, {user?.name?.split(" ")[0]} 👋</h1>
+            <h1 className="font-black text-slate-800 text-lg">Bonjour, {(profile?.name || user?.firstName)?.split(" ")[0]} 👋</h1>
             <p className="text-slate-400 text-xs mt-0.5">Voici l'état de tes tontines</p>
           </div>
         </div>
 
         {/* Demandes de transfert */}
-        <PendingTransfers userId={user?.id} />
+        <PendingTransfers />
 
         {/* Succès création */}
         {created && (
@@ -388,7 +391,7 @@ export default function Dashboard() {
 
               {showForm && (
                 <div className="mb-4">
-                  <CreateTontineForm managerId={user?.id} onSuccess={handleCreated} onCancel={() => setShowForm(false)} />
+                  <CreateTontineForm onSuccess={handleCreated} onCancel={() => setShowForm(false)} />
                 </div>
               )}
 
@@ -424,12 +427,11 @@ export default function Dashboard() {
 
             {/* ── REJOINDRE VIA CODE ── */}
             <JoinTontineCard
-              userId={user?.id}
               onSuccess={(name) => { setJoinMsg(name); setTimeout(() => setJoinMsg(""), 5000); }}
             />
 
             {/* ── RÉSUMÉ FINANCIER ── */}
-            <FinancialSummary userId={user?.id} />
+            <FinancialSummary />
 
             {/* État vide total */}
             {tontines.length === 0 && !showForm && (

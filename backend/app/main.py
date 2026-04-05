@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import auth, members, payments, tontines, notifications, users, admin, transfer
+from .routers import members, payments, tontines, notifications, users, admin, transfer
 
 app = FastAPI(
     title="Kolo API",
@@ -10,19 +10,20 @@ app = FastAPI(
     description="API pour la gestion de tontines collectives",
 )
 
+origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+if "http://localhost:5173" not in origins:
+    origins.append("http://localhost:5173")
+if "http://localhost:3000" not in origins:
+    origins.append("http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://kolo-app-two.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
 app.include_router(tontines.router)
 app.include_router(members.router)
 app.include_router(payments.router)

@@ -5,14 +5,14 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.tontine import Tontine
-from ..models.payment import TontineMember, Cycle
+from ..models.payment import TontineMember, Cycle, Payment
 from ..models.user import User
 from ..schemas.tontine import TontineCreate, TontineOut
 
-from ..models.payment import TontineMember, Cycle, Payment
-from ..models.user import User 
 from typing import Optional
 from pydantic import BaseModel
+from ..deps import get_current_user
+
 router = APIRouter(prefix="/tontines", tags=["Tontines"])
 
 
@@ -22,7 +22,9 @@ def generate_invite_code() -> str:
 
 
 @router.post("/", response_model=TontineOut, summary="Créer une tontine")
-def create_tontine(body: TontineCreate, manager_id: str, db: Session = Depends(get_db)):
+def create_tontine(body: TontineCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Vérifie que le gérant existe
+    manager_id = str(current_user.id)
     # Vérifie que le gérant existe
     manager = db.query(User).filter(User.id == manager_id).first()
     if not manager:
@@ -53,136 +55,9 @@ def create_tontine(body: TontineCreate, manager_id: str, db: Session = Depends(g
     db.refresh(tontine)
     return tontine
 
-
-@router.get("/manager/{manager_id}", summary="Tontines d'un gérant")
-def get_manager_tontines(manager_id: str, db: Session = Depends(get_db)):
-    tontines = db.query(Tontine).filter(Tontine.manager_id == manager_id).all()
-    return [
-        {
-            "id": str(t.id),
-            "name": t.name,
-            "contribution_amount": float(t.contribution_amount),
-            "start_date": t.start_date.isoformat(),
-            "mode": t.mode,
-            "invite_code": t.invite_code,
-            "current_cycle": t.current_cycle,
-            "member_count": len(t.members),
-        }
-        for t in tontines
-    ]
-
-
-@router.get("/{tontine_id}", response_model=TontineOut, summary="Détail d'une tontine")
-def get_tontine(tontine_id: str, db: Session = Depends(get_db)):
-    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
-    if not tontine:
-        raise HTTPException(404, "Tontine introuvable")
-    return tontine
-
-
-@router.get("/join/{code}", summary="Info tontine par code d'invitation")
-def get_tontine_by_code(code: str, db: Session = Depends(get_db)):
-    tontine = db.query(Tontine).filter(
-        Tontine.invite_code == code.upper()
-    ).first()
-    if not tontine:
-        raise HTTPException(404, "Code invalide")
-    return {
-        "id": str(tontine.id),
-        "name": tontine.name,
-        "contribution_amount": float(tontine.contribution_amount),
-        "member_count": len(tontine.members),
-        "manager_name": tontine.manager.name,
-    }
-
-@router.get("/{tontine_id}/dashboard", summary="Dashboard complet d'une tontine")
-def get_tontine_dashboard(tontine_id: str, db: Session = Depends(get_db)):
-    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
-    if not tontine:
-        raise HTTPException(404, "Tontine introuvable")
-
-    # Cycle actuel
-    cycle = (
-        db.query(Cycle)
-        .filter(Cycle.tontine_id == tontine_id, Cycle.cycle_number == tontine.current_cycle)
-        .first()
-    )
-
-    # Membres avec statut de paiement du cycle actuel
-    members_data = []
-    for m in tontine.members:
-        payment = None
-        if cycle:
-            payment = (
-                db.query(Payment)
-                .filter(Payment.cycle_id == cycle.id, Payment.member_id == m.user_id)
-                .first()
-            )
-        members_data.append({
-            "id": str(m.id),
-            "user_id": str(m.user_id),
-            "name": m.user.name,
-            "phone": m.user.phone,
-            "payment_id": str(payment.id) if payment else None,
-            "status": "paid" if (payment and payment.is_validated) else
-                      "pending" if payment else "missing",
-            "validated_at": payment.validated_at.isoformat() if (payment and payment.validated_at) else None,
-        })
-
-    paid_count = sum(1 for m in members_data if m["status"] == "paid")
-    total_amount = float(tontine.contribution_amount) * len(tontine.members)
-
-    # Bénéficiaire actuel
-    beneficiary = None
-    if cycle and cycle.beneficiary_id:
-        b = db.query(User).filter(User.id == cycle.beneficiary_id).first()
-        if b:
-            beneficiary = {"name": b.name, "phone": b.phone}
-
-    # Historique des cycles passés
-    history = []
-    past_cycles = (
-        db.query(Cycle)
-        .filter(Cycle.tontine_id == tontine_id, Cycle.completed_at.isnot(None))
-        .order_by(Cycle.cycle_number)
-        .all()
-    )
-    for c in past_cycles:
-        if c.beneficiary_id:
-            b = db.query(User).filter(User.id == c.beneficiary_id).first()
-            history.append({
-                "cycle_number": c.cycle_number,
-                "beneficiary_name": b.name if b else "—",
-                "total_amount": float(c.total_amount) if c.total_amount else 0,
-                "completed_at": c.completed_at.isoformat(),
-            })
-
-    return {
-        "id": str(tontine.id),
-        "name": tontine.name,
-        "contribution_amount": float(tontine.contribution_amount),
-        "start_date": tontine.start_date.isoformat(),
-        "mode": tontine.mode,
-        "invite_code": tontine.invite_code,
-        "current_cycle": tontine.current_cycle,
-        "manager_id": str(tontine.manager_id),
-        "total_amount": total_amount,
-        "paid_count": paid_count,
-        "member_count": len(tontine.members),
-        "beneficiary": beneficiary,
-        "members": members_data,
-        "history": history,
-        "cycle_id": str(cycle.id) if cycle else None,
-        "welcome_message":        tontine.welcome_message,
-        "payment_day":            tontine.payment_day,
-        "show_next_beneficiary":  tontine.show_next_beneficiary,
-        "show_payments": tontine.show_payments,
-        "mode": tontine.mode,
-    }
-
-
-@router.get("/member/{user_id}", summary="Tontines où l'utilisateur est membre")
-def get_member_tontines(user_id: str, db: Session = Depends(get_db)):
+@router.get("/my-tontines", summary="Tontines où l'utilisateur est membre")
+def get_my_tontines(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_id = current_user.id
     memberships = db.query(TontineMember).filter(
         TontineMember.user_id == user_id
     ).all()
@@ -214,7 +89,7 @@ def get_member_tontines(user_id: str, db: Session = Depends(get_db)):
             "invite_code": t.invite_code,
             "current_cycle": t.current_cycle,
             "member_count": len(t.members),
-            "is_manager": str(t.manager_id) == user_id,
+            "is_manager": t.manager_id == user_id,
             "my_payment_status": payment_status,
             "manager_name": t.manager.name,
         })
@@ -222,7 +97,129 @@ def get_member_tontines(user_id: str, db: Session = Depends(get_db)):
     return result
 
 
+
+@router.get("/{tontine_id}", response_model=TontineOut, summary="Détail d'une tontine")
+def get_tontine(tontine_id: str, db: Session = Depends(get_db)):
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(404, "Tontine introuvable")
+    return tontine
+
+
+@router.get("/join/{code}", summary="Info tontine par code d'invitation")
+def get_tontine_by_code(code: str, db: Session = Depends(get_db)):
+    tontine = db.query(Tontine).filter(
+        Tontine.invite_code == code.upper()
+    ).first()
+    if not tontine:
+        raise HTTPException(404, "Code invalide")
+    return {
+        "id": str(tontine.id),
+        "name": tontine.name,
+        "contribution_amount": float(tontine.contribution_amount),
+        "member_count": len(tontine.members),
+        "manager_name": tontine.manager.name,
+    }
+
+@router.get("/{tontine_id}/dashboard", summary="Dashboard complet d'une tontine")
+def get_tontine_dashboard(tontine_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(404, "Tontine introuvable")
+
+    # Cycle actuel
+    cycle = (
+        db.query(Cycle)
+        .filter(Cycle.tontine_id == tontine_id, Cycle.cycle_number == tontine.current_cycle)
+        .first()
+    )
+
+    # Membres avec statut de paiement du cycle actuel
+    members_data = []
+    for m in tontine.members:
+        payment = None
+        if cycle:
+            payment = (
+                db.query(Payment)
+                .filter(Payment.cycle_id == cycle.id, Payment.member_id == m.user_id)
+                .first()
+            )
+        members_data.append({
+            "id": str(m.id),
+            "user_id": str(m.user_id),
+            "name": m.user.name,
+            "phone": m.user.phone,
+            "avatar": m.user.avatar,
+            "payment_id": str(payment.id) if payment else None,
+            "status": "paid" if (payment and payment.is_validated) else
+                      "pending" if payment else "missing",
+            "validated_at": payment.validated_at.isoformat() if (payment and payment.validated_at) else None,
+        })
+
+    paid_count = sum(1 for m in members_data if m["status"] == "paid")
+    total_amount = float(tontine.contribution_amount) * len(tontine.members)
+
+    # Contrôle de visibilité (Bénéficiaire et Historique)
+    is_manager = str(tontine.manager_id) == str(current_user.id)
+    show_details = tontine.show_next_beneficiary or is_manager
+
+    # Bénéficiaire actuel
+    beneficiary = None
+    if show_details and cycle and cycle.beneficiary_id:
+        b = db.query(User).filter(User.id == cycle.beneficiary_id).first()
+        if b:
+            beneficiary = {"name": b.name, "phone": b.phone}
+
+    # Historique des cycles passés
+    history = []
+    if show_details:
+        past_cycles = (
+            db.query(Cycle)
+            .filter(Cycle.tontine_id == tontine_id, Cycle.completed_at.isnot(None))
+            .order_by(Cycle.cycle_number)
+            .all()
+        )
+        for c in past_cycles:
+            if c.beneficiary_id:
+                b = db.query(User).filter(User.id == c.beneficiary_id).first()
+                history.append({
+                    "cycle_number": c.cycle_number,
+                    "beneficiary_name": b.name if b else "—",
+                    "total_amount": float(c.total_amount) if c.total_amount else 0,
+                    "completed_at": c.completed_at.isoformat(),
+                })
+
+    return {
+        "id": str(tontine.id),
+        "name": tontine.name,
+        "contribution_amount": float(tontine.contribution_amount),
+        "start_date": tontine.start_date.isoformat(),
+        "mode": tontine.mode,
+        "invite_code": tontine.invite_code,
+        "current_cycle": tontine.current_cycle,
+        "manager_id": str(tontine.manager_id),
+        "is_manager": tontine.manager_id == current_user.id,
+        "my_avatar": current_user.avatar,
+        "total_amount": total_amount,
+        "paid_count": paid_count,
+        "member_count": len(tontine.members),
+        "beneficiary": beneficiary,
+        "members": members_data,
+        "history": history,
+        "cycle_id": str(cycle.id) if cycle else None,
+        "welcome_message":        tontine.welcome_message,
+        "payment_day":            tontine.payment_day,
+        "show_next_beneficiary":  tontine.show_next_beneficiary,
+        "show_payments": tontine.show_payments,
+        "mode": tontine.mode,
+    }
+
+
+
+
 class TontineSettings(BaseModel):
+    name: Optional[str] = None
+    contribution_amount: Optional[float] = None
     welcome_message: Optional[str] = None
     show_next_beneficiary: Optional[bool] = None
     payment_day: Optional[int] = None  # jour du mois (1-28)
@@ -233,10 +230,19 @@ class TontineSettings(BaseModel):
 
 
 @router.put("/{tontine_id}/settings", summary="Paramètres de la tontine")
-def update_tontine_settings(tontine_id: str, body: TontineSettings, db: Session = Depends(get_db)):
+def update_tontine_settings(tontine_id: str, body: TontineSettings, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
     if not tontine:
         raise HTTPException(404, "Tontine introuvable")
+    
+    # Autorisation gérant
+    if tontine.manager_id != current_user.id:
+        raise HTTPException(403, "Seul le gérant peut modifier les paramètres")
+
+    if body.name is not None:
+        tontine.name = body.name
+    if body.contribution_amount is not None:
+        tontine.contribution_amount = body.contribution_amount
     if body.welcome_message is not None:
         tontine.welcome_message = body.welcome_message
     if body.show_next_beneficiary is not None:
@@ -252,5 +258,21 @@ def update_tontine_settings(tontine_id: str, body: TontineSettings, db: Session 
         tontine.mode = body.mode
     if body.show_payments is not None:
         tontine.show_payments = body.show_payments
+    
     db.commit()
     return {"message": "Paramètres mis à jour"}
+
+
+@router.delete("/{tontine_id}", summary="Supprimer une tontine")
+def delete_tontine(tontine_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    tontine = db.query(Tontine).filter(Tontine.id == tontine_id).first()
+    if not tontine:
+        raise HTTPException(404, "Tontine introuvable")
+
+    # Autorisation gérant
+    if tontine.manager_id != current_user.id:
+        raise HTTPException(403, "Seul le gérant peut supprimer la tontine")
+
+    db.delete(tontine)
+    db.commit()
+    return {"message": "Tontine supprimée avec succès"}

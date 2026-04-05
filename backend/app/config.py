@@ -10,9 +10,20 @@ class Settings(BaseSettings):
     twilio_account_sid: Optional[str] = None
     twilio_auth_token: Optional[str] = None
     twilio_phone_number: Optional[str] = None
+    
+    clerk_secret_key: Optional[str] = None
+    clerk_publishable_key: Optional[str] = None
+    clerk_jwt_issuer: Optional[str] = None # URL de l'instance Clerk pour la validation
 
     environment: str = "development"
-    cors_origins: str = "https://kolo-app-two.vercel.app/"
+    cors_origins: str = "https://kolo-app-two.vercel.app/,http://localhost:5173"
+
+    # Cloudflare R2 Settings
+    r2_account_id: Optional[str] = None
+    r2_access_key_id: Optional[str] = None
+    r2_secret_access_key: Optional[str] = None
+    r2_bucket_name: str = "kolo-app"
+    r2_public_url_prefix: Optional[str] = None  # ex: https://pub-xxx.r2.dev
 
     class Config:
         env_file = ".env"

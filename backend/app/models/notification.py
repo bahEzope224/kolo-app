@@ -12,6 +12,7 @@ class NotifType(str, enum.Enum):
     late_reminder     = "late_reminder"
     beneficiary       = "beneficiary"
     new_member        = "new_member"
+    new_cycle         = "new_cycle"
 
 
 class Notification(Base):

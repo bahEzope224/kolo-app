@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.notification import Notification
+from ..models.user import User
+from ..deps import get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
-@router.get("/{user_id}", summary="Notifications d'un utilisateur")
-def get_notifications(user_id: str, db: Session = Depends(get_db)):
+@router.get("/me", summary="Notifications de l'utilisateur connecté")
+def get_my_notifications(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = str(current_user.id)
     notifs = (
         db.query(Notification)
         .filter(Notification.user_id == user_id)
@@ -28,8 +31,9 @@ def get_notifications(user_id: str, db: Session = Depends(get_db)):
     ]
 
 
-@router.post("/{user_id}/read-all", summary="Marquer toutes comme lues")
-def mark_all_read(user_id: str, db: Session = Depends(get_db)):
+@router.post("/me/read-all", summary="Marquer toutes comme lues")
+def mark_my_all_read(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    user_id = str(current_user.id)
     db.query(Notification).filter(
         Notification.user_id == user_id,
         Notification.is_read == False,
@@ -39,8 +43,11 @@ def mark_all_read(user_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{notif_id}/read", summary="Marquer une notification comme lue")
-def mark_read(notif_id: str, db: Session = Depends(get_db)):
-    notif = db.query(Notification).filter(Notification.id == notif_id).first()
+def mark_read(notif_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    notif = db.query(Notification).filter(
+        Notification.id == notif_id,
+        Notification.user_id == current_user.id
+    ).first()
     if notif:
         notif.is_read = True
         db.commit()

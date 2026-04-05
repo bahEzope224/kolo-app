@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useUser } from "@clerk/clerk-react";
 import { getTontineDashboard, validatePayment, remindLateMembers, removeMember } from "../api/client";
 import InviteModal from "../components/InviteModal";
 import DrawModal from "../components/DrawModal";
@@ -8,39 +9,8 @@ import AddPaymentModal from "../components/AddPaymentModal";
 import NotificationBell from "../components/NotificationBell";
 import TontineSettingsModal from "../components/TontineSettingsModal";
 import TransferModal from "../components/TransferModal";
+import UserAvatar from "../components/UserAvatar";
 
-function initials(name) {
-  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-}
-
-const STATUS = {
-  paid:    { label: "Payé ✓",     bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
-  pending: { label: "En attente", bg: "bg-amber-100",   text: "text-amber-800",   dot: "bg-amber-400"   },
-  missing: { label: "Non inscrit",bg: "bg-slate-100",   text: "text-slate-500",   dot: "bg-slate-300"   },
-};
-
-function Badge({ status }) {
-  const s = STATUS[status] || STATUS.missing;
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
-      {s.label}
-    </span>
-  );
-}
-
-function Avatar({ name, status }) {
-  const colors = {
-    paid:    "bg-emerald-100 text-emerald-700",
-    pending: "bg-amber-100 text-amber-700",
-    missing: "bg-slate-100 text-slate-500",
-  };
-  return (
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0 ${colors[status] || colors.missing}`}>
-      {initials(name)}
-    </div>
-  );
-}
 
 function ActionRow({ icon, label, sublabel, onClick, danger, disabled }) {
   return (
@@ -70,25 +40,36 @@ function Section({ title, children }) {
   );
 }
 
+const STATUS = {
+  paid:    { label: "Payé ✓",     bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-500" },
+  pending: { label: "En attente", bg: "bg-amber-100",   text: "text-amber-800",   dot: "bg-amber-400"   },
+  missing: { label: "Non inscrit",bg: "bg-slate-100",   text: "text-slate-500",   dot: "bg-slate-300"   },
+};
+
+function Badge({ status }) {
+  const s = STATUS[status] || STATUS.missing;
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
+
 export default function TontineDetail() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const qc       = useQueryClient();
-
-  const [showInvite,     setShowInvite]     = useState(false);
-  const [showDraw,       setShowDraw]       = useState(false);
+  const { user } = useUser();
+  const [showInvite, setShowInvite] = useState(false);
+  const [showDraw, setShowDraw] = useState(false);
   const [showAddPayment, setShowAddPayment] = useState(false);
-  const [showSettings,   setShowSettings]   = useState(false);
-  const [showTransfer,   setShowTransfer]   = useState(false);
-  const [showMembers,    setShowMembers]    = useState(false);
-  const [showHistory,    setShowHistory]    = useState(false);
-  const [toast,          setToast]          = useState("");
-  const [search,         setSearch]         = useState("");
-
-  const user = JSON.parse(
-    localStorage.getItem("kolo_user") ||
-    sessionStorage.getItem("kolo_user") || "{}"
-  );
+  const [showSettings, setShowSettings] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["tontine", id],
@@ -116,7 +97,7 @@ export default function TontineDetail() {
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 3000); }
 
-  const isGerant = data?.manager_id === user?.id;
+  const isGerant = data?.is_manager;
   const lateCount = data ? data.member_count - data.paid_count : 0;
 
   if (isLoading) return (
@@ -151,10 +132,10 @@ export default function TontineDetail() {
           </span>
         )}
         <div className="flex items-center gap-2 flex-shrink-0">
-          <NotificationBell userId={user?.id} />
+          <NotificationBell />
           <button onClick={() => navigate("/profile")}
-            className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center font-black text-white text-xs border-none min-h-0">
-            {user?.name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "??"}
+            className="min-h-0 p-0 bg-transparent border-none">
+            <UserAvatar user={{ ...user, avatar: data?.my_avatar }} size="sm" />
           </button>
         </div>
       </header>
@@ -274,7 +255,7 @@ export default function TontineDetail() {
           <ActionRow icon="👤" label="Voir les participants"
             sublabel={`${data.member_count} membres`}
             onClick={() => setShowMembers(!showMembers)} />
-          {(isGerant || data.show_payments) && (
+          {(isGerant || (data.show_payments && data.show_next_beneficiary)) && (
             <ActionRow icon="📋" label="Historique des cycles"
               sublabel={`${data.history?.length || 0} cycle${data.history?.length > 1 ? "s" : ""} terminé${data.history?.length > 1 ? "s" : ""}`}
               onClick={() => setShowHistory(!showHistory)} />
@@ -292,7 +273,7 @@ export default function TontineDetail() {
             <div className="divide-y divide-slate-50">
               {filteredMembers.map(m => (
                 <div key={m.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition">
-                  <Avatar name={m.name} status={isGerant || data.show_payments ? m.status : "missing"} />
+                  <UserAvatar user={m} size="sm" />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-slate-800 text-sm truncate">{m.name}</div>
                     <div className="text-slate-400 text-xs">{m.phone}</div>
@@ -326,7 +307,7 @@ export default function TontineDetail() {
         )}
 
         {/* ── HISTORIQUE (dépliable) ── */}
-        {showHistory && (isGerant || data.show_payments) && (
+        {showHistory && (isGerant || (data.show_payments && data.show_next_beneficiary)) && (
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
             {data.history.length === 0 ? (
               <div className="text-center py-8 text-slate-400 text-sm">Aucun cycle terminé</div>
