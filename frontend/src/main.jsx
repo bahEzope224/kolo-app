@@ -4,10 +4,11 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import "./index.css";
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "pk_test_dGVhY2hpbmctc2hpbmVyLTk4LmNsZXJrLmFjY291bnRzLmRldiQ";
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key");
+  // Ce cas est maintenant presque impossible avec le fallback
+  console.error("Missing Clerk Publishable Key");
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
