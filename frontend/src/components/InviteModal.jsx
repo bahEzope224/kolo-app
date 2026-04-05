@@ -1,33 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { inviteMember } from "../api/client";
 
-const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
 export default function InviteModal({ tontineId, inviteCode, onClose }) {
-  const qc = useQueryClient();
-  const [tab, setTab] = useState("form"); // "form" | "code"
-  const [form, setForm] = useState({ name: "", phone: "" });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [copied, setCopied] = useState(false);
-
-  const mutation = useMutation({
-    mutationFn: (data) => inviteMember(tontineId, data),
-    onSuccess: (data) => {
-      qc.invalidateQueries(["tontine", tontineId]);
-      setSuccess(`${form.name} a été ajouté(e) ! Il peut se connecter avec son numéro.`);
-      setForm({ name: "", phone: "" });
-    },
-    onError: (e) => setError(e.response?.data?.detail || "Erreur lors de l'invitation"),
-  });
-
-  function handleInvite() {
-    if (!form.name.trim())  { setError("Entre le prénom du membre"); return; }
-    if (!form.phone.trim()) { setError("Entre son numéro de téléphone"); return; }
-    setError("");
-    setSuccess("");
-    mutation.mutate(form);
-  }
 
   function copyCode() {
     navigator.clipboard.writeText(inviteCode);
@@ -36,157 +10,88 @@ export default function InviteModal({ tontineId, inviteCode, onClose }) {
   }
 
   function copyLink() {
-    navigator.clipboard.writeText(`https://kolo-app-two.vercel.app/join/${inviteCode}`);
+    // On utilise l'URL absolue pour le partage
+    const joinUrl = `${window.location.origin}/join/${inviteCode}`;
+    navigator.clipboard.writeText(joinUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
+
+  const shareText = encodeURIComponent(
+    `Rejoins ma tontine sur Kolo ! 🌿\n\nLien : ${window.location.origin}/join/${inviteCode}\nCode : ${inviteCode}`
+  );
+
   return (
-    // Fond sombre
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+        className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-slate-900 px-5 py-4 flex items-center justify-between">
-          <h3 className="text-white font-black text-lg">Inviter un membre</h3>
+        <div className="bg-emerald-600 px-6 py-6 text-center relative border-none">
+          <div className="text-4xl mb-2">🌿</div>
+          <h3 className="text-white font-black text-xl">Partager l'invitation</h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition min-h-0 p-0 bg-transparent border-none text-xl"
+            className="absolute top-4 right-4 text-emerald-100 hover:text-white transition min-h-0 p-1 bg-white/10 rounded-full border-none text-sm"
           >
             ✕
           </button>
         </div>
 
-        {/* Onglets */}
-        <div className="flex border-b border-slate-100">
-          {[
-            { id: "form", label: "➕ Ajouter manuellement" },
-            { id: "code", label: "🔗 Partager le code" },
-          ].map((t) => (
+        <div className="p-6 space-y-6">
+          <p className="text-slate-500 text-sm text-center leading-relaxed">
+            Partage ce code ou ce lien avec tes membres pour qu'ils rejoignent directement ta tontine.
+          </p>
+
+          {/* Code visuel */}
+          <div className="bg-slate-50 rounded-2xl p-6 text-center border-2 border-dashed border-slate-200">
+            <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">
+              Code d'invitation
+            </div>
+            <div className="font-mono font-black text-4xl tracking-widest text-slate-800">
+              {inviteCode}
+            </div>
+          </div>
+
+          {/* Boutons de partage */}
+          <div className="grid grid-cols-2 gap-3">
             <button
-              key={t.id}
-              onClick={() => { setTab(t.id); setError(""); setSuccess(""); }}
-              className={`flex-1 py-3 text-xs font-bold transition min-h-0 border-none rounded-none ${
-                tab === t.id
-                  ? "text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50"
-                  : "text-slate-400 bg-white"
+              onClick={copyCode}
+              className={`py-4 rounded-2xl text-xs font-bold transition min-h-0 border-none ${
+                copied && !window.location.href.includes("join")
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
               }`}
             >
-              {t.label}
+              📋 Copier le code
             </button>
-          ))}
-        </div>
+            <button
+              onClick={copyLink}
+              className="py-4 rounded-2xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition min-h-0 border-none"
+            >
+              🔗 Copier le lien
+            </button>
+          </div>
 
-        <div className="p-5">
+          {/* WhatsApp */}
+          <a
+            href={`https://wa.me/?text=${shareText}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-sm transition no-underline"
+          >
+            <span className="text-lg">💬</span> Partager sur WhatsApp
+          </a>
 
-          {/* TAB : Formulaire */}
-          {tab === "form" && (
-            <div className="space-y-4">
-              <p className="text-slate-500 text-sm">
-                Le gérant ajoute le membre directement — il pourra se connecter avec son numéro.
-              </p>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Prénom et nom</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Aminata Diallo"
-                  value={form.name}
-                  onChange={(e) => { setForm({ ...form, name: e.target.value }); setError(""); }}
-                  className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-emerald-400 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Numéro de téléphone</label>
-                <input
-                  type="tel"
-                  placeholder="+33 6 12 34 56 78"
-                  inputMode="tel"
-                  value={form.phone}
-                  onChange={(e) => { setForm({ ...form, phone: e.target.value }); setError(""); }}
-                  className="w-full border-2 border-slate-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-emerald-400 transition"
-                />
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
-                  {error}
-                </div>
-              )}
-
-              {success && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-emerald-700 text-sm font-medium">
-                  ✅ {success}
-                </div>
-              )}
-
-              <button
-                onClick={handleInvite}
-                disabled={mutation.isPending}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-black py-4 rounded-xl text-base transition"
-              >
-                {mutation.isPending ? "Ajout en cours…" : "Ajouter le membre →"}
-              </button>
-            </div>
-          )}
-
-          {/* TAB : Code */}
-          {tab === "code" && (
-            <div className="space-y-4">
-              <p className="text-slate-500 text-sm">
-                Partage ce code à tes membres. Ils l'entrent dans l'app pour rejoindre directement.
-              </p>
-
-              {/* Code visuel */}
-              <div className="bg-slate-50 rounded-2xl p-6 text-center border-2 border-dashed border-slate-200">
-                <div className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-2">
-                  Code d'invitation
-                </div>
-                <div className="font-mono font-black text-4xl tracking-widest text-slate-800 mb-1">
-                  {inviteCode}
-                </div>
-              </div>
-
-              {/* Boutons de partage */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={copyCode}
-                  className={`py-3 rounded-xl text-sm font-bold transition min-h-0 ${
-                    copied
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  {copied ? "✓ Copié !" : "📋 Copier le code"}
-                </button>
-                <button
-                  onClick={copyLink}
-                  className="py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition min-h-0"
-                >
-                  🔗 Copier le lien
-                </button>
-              </div>
-
-              {/* WhatsApp */}
-              <a
-                href={`https://wa.me/?text=Rejoins%20ma%20tontine%20sur%20Kolo%20!%0ALien%20:%20https://kolo-app-two.vercel.app/join/${inviteCode}%0ACode%20:%20${inviteCode}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold text-sm transition"
-              >
-                <span>💬</span> Envoyer sur WhatsApp
-              </a>
-
-              <p className="text-slate-400 text-xs text-center">
-                Le membre doit d'abord avoir un compte Kolo pour rejoindre via ce code.
-              </p>
-            </div>
-          )}
+          <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+            <p className="text-amber-800 text-[10px] text-center font-bold leading-tight">
+              ⚠️ Chaque membre doit se connecter avec son propre compte sur Kolo pour participer.
+            </p>
+          </div>
         </div>
       </div>
     </div>

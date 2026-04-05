@@ -248,8 +248,8 @@ export default function TontineDetail() {
         {/* ── SECTION GROUPE ── */}
         <Section title="Groupe">
           {isGerant && (
-            <ActionRow icon="👥" label="Inviter des membres"
-              sublabel={`${data.member_count}/${data.max_members || "∞"} membres`}
+            <ActionRow icon="👥" label="Partager l'invitation"
+              sublabel="Lien ou code d'invitation"
               onClick={() => setShowInvite(true)} />
           )}
           <ActionRow icon="👤" label="Voir les participants"

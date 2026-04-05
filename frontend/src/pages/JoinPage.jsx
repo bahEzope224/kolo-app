@@ -31,7 +31,7 @@ export default function JoinPage() {
     mutationFn: (c) => joinByCode(c),
     onSuccess: (data) => {
       setSuccess(true);
-      queryClient.invalidateQueries(["my-tontines"]);
+      queryClient.invalidateQueries(["tontines"]);
       setTimeout(() => {
         navigate(`/tontine/${data.tontine_id}`);
       }, 2500);

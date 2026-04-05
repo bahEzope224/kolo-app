@@ -232,7 +232,7 @@ function JoinTontineCard() {
   );
 }
 
-// ── Résumé financier ──────────────────────────────────────
+// ── Résumé financier (Fintech Premium) ───────────────────
 function FinancialSummary() {
   const { data: summary } = useQuery({
     queryKey: ["summary"],
@@ -243,48 +243,95 @@ function FinancialSummary() {
   if (!summary) return null;
 
   const balance = summary.balance;
+  const hasMultiple = summary.tontines.length > 1;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-50 flex items-center justify-between">
-        <span className="font-black text-slate-700 text-sm">📊 Résumé financier</span>
-      </div>
+    <div className="space-y-4">
+      {/* ── CARTE PRINCIPALE (HERO) ── */}
+      <div className="relative overflow-hidden bg-slate-900 rounded-[32px] p-6 text-white shadow-2xl shadow-slate-200">
+        {/* Cercles décoratifs (Glassmorphism effect) */}
+        <div className="absolute -top-12 -right-12 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl" />
 
-      {/* 3 stats */}
-      <div className="grid grid-cols-3 divide-x divide-slate-100">
-        {[
-          { label: "Versé",   value: `${summary.total_paid}€`,     color: "text-slate-800" },
-          { label: "Reçu",    value: `${summary.total_received}€`,  color: "text-emerald-600" },
-          { label: "Balance", value: `${balance >= 0 ? "+" : ""}${balance}€`,
-            color: balance >= 0 ? "text-emerald-600" : "text-red-500" },
-        ].map(s => (
-          <div key={s.label} className="text-center py-4 px-2">
-            <div className={`font-black text-lg leading-none ${s.color}`}>{s.value}</div>
-            <div className="text-slate-400 text-xs mt-1">{s.label}</div>
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <div className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+                Mon Portefeuille
+              </div>
+              <div className="text-xs text-slate-500 font-bold">
+                {summary.active_tontines} tontine{summary.active_tontines > 1 ? "s" : ""} active{summary.active_tontines > 1 ? "s" : ""}
+              </div>
+            </div>
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+              <span className="text-xl">📊</span>
+            </div>
           </div>
-        ))}
+
+          <div className="mb-8 text-center">
+            <div className="text-slate-400 text-xs font-semibold mb-1">Balance Totale</div>
+            <div className={`text-5xl font-black tracking-tight ${balance >= 0 ? "text-white" : "text-red-400"}`}>
+              {balance >= 0 ? "+" : ""}{balance}€
+            </div>
+          </div>
+
+          {/* Mini-stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/5 rounded-2xl p-3 border border-white/10">
+              <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Total Versé</div>
+              <div className="text-lg font-black text-slate-200">{summary.total_paid}€</div>
+            </div>
+            <div className="bg-emerald-500/10 rounded-2xl p-3 border border-emerald-500/20">
+              <div className="text-[10px] text-emerald-400/80 font-bold uppercase mb-1">Total Reçu</div>
+              <div className="text-lg font-black text-emerald-400">{summary.total_received}€</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Détail par tontine */}
-      {summary.tontines.length > 0 && (
-        <div className="border-t border-slate-50">
+      {/* ── DÉTAIL PAR TONTINE ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Détails par groupe</h3>
+          {hasMultiple && <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">Trié par activité</span>}
+        </div>
+
+        <div className="grid gap-3">
           {summary.tontines.map(t => (
             <button key={t.tontine_id}
               onClick={() => navigate(`/tontine/${t.tontine_id}`)}
-              className="w-full flex items-center gap-3 px-4 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition min-h-0 bg-transparent text-left">
-              <UserAvatar user={{ avatar: "🌿", name: t.tontine_name }} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-slate-800 text-xs truncate">{t.tontine_name}</div>
-                <div className="text-slate-400 text-[10px]">{t.is_manager ? "👑 Gérant" : "👥 Membre"}</div>
+              className="group relative bg-white hover:bg-slate-50 border border-slate-100 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:shadow-slate-100 min-h-0 text-left border-none"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                {t.is_manager ? "👑" : "👥"}
               </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="font-black text-slate-800 text-sm truncate mb-0.5">{t.tontine_name}</div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${t.is_manager ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                    {t.is_manager ? "Gérant" : "Membre"}
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">{t.cycles_count} cycles</span>
+                </div>
+              </div>
+
               <div className="text-right flex-shrink-0">
-                <div className="text-xs text-slate-500">versé <span className="font-bold text-slate-700">{t.total_paid}€</span></div>
-                <div className="text-xs text-emerald-600">reçu <span className="font-bold">{t.total_received}€</span></div>
+                <div className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Statut</div>
+                <div className="flex flex-col items-end gap-0.5">
+                  <div className="text-xs font-black text-slate-700">{t.total_paid}€ versés</div>
+                  {t.total_received > 0 && (
+                    <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      +{t.total_received}€ reçus 🏆
+                    </div>
+                  )}
+                </div>
               </div>
             </button>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
