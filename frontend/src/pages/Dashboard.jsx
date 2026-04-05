@@ -376,6 +376,18 @@ export default function Dashboard() {
           <div className="text-center py-16 text-slate-400 text-sm">Chargement…</div>
         ) : (
           <>
+            {/* État vide total */}
+            {tontines.length === 0 && !showForm && (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-4">🌿</div>
+                <p className="text-slate-600 font-bold">Bienvenue sur Kolo !</p>
+                <p className="text-slate-400 text-sm mt-2 mb-5">Crée ou rejoins une tontine.</p>
+                <button onClick={() => setShowForm(true)}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 py-3 rounded-xl text-sm transition border-none">
+                  + Créer une tontine
+                </button>
+              </div>
+            )}
             {/* ── MES TONTINES ── */}
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -433,18 +445,7 @@ export default function Dashboard() {
             {/* ── RÉSUMÉ FINANCIER ── */}
             <FinancialSummary />
 
-            {/* État vide total */}
-            {tontines.length === 0 && !showForm && (
-              <div className="text-center py-12">
-                <div className="text-5xl mb-4">🌿</div>
-                <p className="text-slate-600 font-bold">Bienvenue sur Kolo !</p>
-                <p className="text-slate-400 text-sm mt-2 mb-5">Crée ou rejoins une tontine.</p>
-                <button onClick={() => setShowForm(true)}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-6 py-3 rounded-xl text-sm transition border-none">
-                  + Créer une tontine
-                </button>
-              </div>
-            )}
+          
           </>
         )}
 
