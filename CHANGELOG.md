@@ -1,0 +1,55 @@
+# Changelog
+
+## 1.0.0 (2026-04-06)
+
+
+### Features
+
+* add Admin Tontines CRUD and manager notification on deletion ([fab2205](https://github.com/bahEzope224/kolo-app/commit/fab2205371a9193589e88c34866c17cbe5d8d86b))
+* admin stats, avatar profil, suppression compte, paramètres tontine, dates versement, bénéficiaire public, responsive mobile corrigé, PWA icons, [@import](https://github.com/import) CSS fix ([c5a8b6f](https://github.com/bahEzope224/kolo-app/commit/c5a8b6f27b323500048bcac63ede533bbc7aa9ad))
+* auth clerk, fix tontine detail ([9edcd8c](https://github.com/bahEzope224/kolo-app/commit/9edcd8c22aaf09f3c927dd1996f669251d09b809))
+* **dashboard:** improve financial summary and add CI/CD workflows ([a1bec20](https://github.com/bahEzope224/kolo-app/commit/a1bec20f28adc571c27157d71141e9a1df212802))
+* favicon SVG + icones PWA + manifest ([3a22a11](https://github.com/bahEzope224/kolo-app/commit/3a22a11b89f13acd7aa50ff8c4737a5c7d38f006))
+* favicon SVG + icones PWA + manifest ([3fb1fb1](https://github.com/bahEzope224/kolo-app/commit/3fb1fb1d0ae1479f2612dc25c14e5da457413bf3))
+* mode versement dans paramètres, show_payments, bouton adapté au mode ([c3493b0](https://github.com/bahEzope224/kolo-app/commit/c3493b06c9acb5786b65b2911c598f7974254f30))
+* modernize invitation system with Clerk and fix cascade delete 500 error ([0ad9d98](https://github.com/bahEzope224/kolo-app/commit/0ad9d98849e742b6a67c0ee5013ef63c4916127f))
+* page onboarding via lien d'invitation ([5acc8ee](https://github.com/bahEzope224/kolo-app/commit/5acc8ee7fe9aca8c6f173f2283f6a7b56c974a0f))
+* résumé financier dans dashboard + rejoindre via code intégré ([a81a861](https://github.com/bahEzope224/kolo-app/commit/a81a8611d44d1fa8190609ecc1fb42f274917e55))
+* résumé financier dans dashboard + rejoindre via code intégré ([2889348](https://github.com/bahEzope224/kolo-app/commit/2889348c8a049346c208f08bf19c944d04255538))
+* TontineDetail redesign UX — sections groupées, actions claires ([36d27a1](https://github.com/bahEzope224/kolo-app/commit/36d27a1d1fdfd6fd59dcd4e2dd88864fa93b2d24))
+
+
+### Bug Fixes
+
+* add Clerk Publishable Key fallback for Vercel stability ([2fab3c0](https://github.com/bahEzope224/kolo-app/commit/2fab3c0a3f0125dc414471f325dba3e1fc3a86d3))
+* admin page securité ([6bc5eb7](https://github.com/bahEzope224/kolo-app/commit/6bc5eb74583acddfdd61ac967801c931a75a97e0))
+* alembic uses DATABASE_URL env var ([980a986](https://github.com/bahEzope224/kolo-app/commit/980a986964394ea9d8971f9c1bc8bec197cb8e51))
+* conflict in the backend's requirements.txt ([71ecd78](https://github.com/bahEzope224/kolo-app/commit/71ecd78bc12ed787c0310c2639e3ff41eaddb57d))
+* correction nav ([baf12f4](https://github.com/bahEzope224/kolo-app/commit/baf12f47f88100a4c34bb8c0385a0d4b985abcfd))
+* correctly display avatars in AdminPage using UserAvatar component ([70a7299](https://github.com/bahEzope224/kolo-app/commit/70a7299f64b1fbdc8cd9a577976089af3eabeb46))
+* dashbord ([8a52f67](https://github.com/bahEzope224/kolo-app/commit/8a52f67183ebc3c41fa6dbe532ef0827e2999fd3))
+* inconsistent indentation causing a flake8 syntax error. ([43c45d0](https://github.com/bahEzope224/kolo-app/commit/43c45d0b5b7ad37e5a55f2e26c1912c93194c8ca))
+* JoinPage handleVerify data is not defined / feat: modes tirage fixe et manuel implémentés ([4fee2ed](https://github.com/bahEzope224/kolo-app/commit/4fee2ede7870fc816826383c7b1bc027eba2d179))
+* payments.py complet sans typo TinioneMember ([4cb625a](https://github.com/bahEzope224/kolo-app/commit/4cb625aa9db745f772ae2abb60ff1c660ce21b5c))
+* **payments:** fix 500 error on close-cycle by using native UUIDs and adding logging ([83cb8ac](https://github.com/bahEzope224/kolo-app/commit/83cb8ac31bd7c5d5be98bb9c5efd1219f6fed8d6))
+* port ([15b0da8](https://github.com/bahEzope224/kolo-app/commit/15b0da86bf10b22b4adef77464d464ce26aa762b))
+* port ([f5ef9a8](https://github.com/bahEzope224/kolo-app/commit/f5ef9a8ee4599375a01d7686cabe05ee5124e74f))
+* port ([e00854f](https://github.com/bahEzope224/kolo-app/commit/e00854ff36e70fea3a323a9e342ec421fb20bdac))
+* port ([4d899f3](https://github.com/bahEzope224/kolo-app/commit/4d899f3cd44ed47e1b335cfed4782706d83dc7fa))
+* port ([bbf90ad](https://github.com/bahEzope224/kolo-app/commit/bbf90ad4043cfcf2203c88e08afa2af9e16e2e2c))
+* port ([e380505](https://github.com/bahEzope224/kolo-app/commit/e380505e23ac482c26000ae03265642921857ec4))
+* port ([f17ca63](https://github.com/bahEzope224/kolo-app/commit/f17ca63c43d80828d97f9d4388968a0a9919aa37))
+* PWA auth localStorage fallback + window.location navigation ([7c1b7e4](https://github.com/bahEzope224/kolo-app/commit/7c1b7e47ff4fa5d7bd2aeb5314c84907e5c4a0ef))
+* readme update ([115b8cb](https://github.com/bahEzope224/kolo-app/commit/115b8cb4dffb1fc7663c931b6c89424015b40223))
+* responsive ([6b044a0](https://github.com/bahEzope224/kolo-app/commit/6b044a0de5963198397eedfbc0697eccf67497eb))
+* retire landing page du dashboard nav ([1f12de0](https://github.com/bahEzope224/kolo-app/commit/1f12de050dd9bc749d42e37b295a6233c7d6b6fd))
+* suppression notif beneficiaire ([6f50d42](https://github.com/bahEzope224/kolo-app/commit/6f50d420dae7f9cffc5bbbb7ac2bbaec0aee0969))
+* suppression notif beneficiaire ([87fb526](https://github.com/bahEzope224/kolo-app/commit/87fb52626d9e685f6b2b6a122674a289fcd94a8c))
+* TontineMember typo + Optional import + CORS URL ([ba8d0f5](https://github.com/bahEzope224/kolo-app/commit/ba8d0f55bb8c0d0392815b055cbcc05133551f7e))
+* TransferRequest sans relationship, jointures manuelles, ordre composants ([d0373fb](https://github.com/bahEzope224/kolo-app/commit/d0373fb72dbfad009e5026de8e72666e0e5c3f6d))
+* twilio vars optional en dev ([62b6333](https://github.com/bahEzope224/kolo-app/commit/62b633357b2eeaaabd072b7d9bf67fddd46d21fa))
+* twilio vars optional en dev ([062889b](https://github.com/bahEzope224/kolo-app/commit/062889b3ca651d6a5bc9a6d6664671f0907a229f))
+* typo aapi -&gt; api + meta PWA ([3cca08d](https://github.com/bahEzope224/kolo-app/commit/3cca08dd28e6fd0ca67a03b80c0602432afcc244))
+* typo aapi -&gt; api + meta PWA ([043d32c](https://github.com/bahEzope224/kolo-app/commit/043d32c8fea52819e9d723bee113a865ccd30e7b))
+* update invite links to production URL ([5d07c02](https://github.com/bahEzope224/kolo-app/commit/5d07c026b7b32be97760c148dda3063b0f4cd59b))
+* verifyOtp params dans JoinPage ([192f60d](https://github.com/bahEzope224/kolo-app/commit/192f60df0a4e5e1d19e46cf3c01bd8f825f2da82))
