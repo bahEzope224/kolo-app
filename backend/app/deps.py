@@ -27,16 +27,16 @@ def get_jwks():
         # 2. Sinon, on tente de décoder la Publishable Key (format pk_test_XXXX)
         elif settings.clerk_publishable_key:
              try:
-                 parts = settings.clerk_publishable_key.split('_')
-                 if len(parts) >= 3:
-                     # Le domaine est dans la 3ème partie, encodé en base64
-                     encoded_domain = parts[2]
-                     # On ajoute du padding si nécessaire pour base64
-                     padding = '=' * (4 - len(encoded_domain) % 4)
-                     decoded_domain = base64.b64decode(encoded_domain + padding).decode('utf-8')
-                     # Parfois fini par $, on nettoie
-                     domain = decoded_domain.replace('$', '')
-                     url = f"https://{domain}/.well-known/jwks.json"
+                parts = settings.clerk_publishable_key.split('_')
+                if len(parts) >= 3:
+                    # Le domaine est dans la 3ème partie, encodé en base64
+                    encoded_domain = parts[2]
+                    # On ajoute du padding si nécessaire pour base64
+                    padding = '=' * (4 - len(encoded_domain) % 4)
+                    decoded_domain = base64.b64decode(encoded_domain + padding).decode('utf-8')
+                    # Parfois fini par $, on nettoie
+                    domain = decoded_domain.replace('$', '')
+                    url = f"https://{domain}/.well-known/jwks.json"
              except Exception as e:
                  print(f"Erreur lors du décodage de la clef Clerk: {e}")
 
