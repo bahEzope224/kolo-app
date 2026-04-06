@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import traceback
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
@@ -9,6 +11,16 @@ app = FastAPI(
     version="1.0.0",
     description="API pour la gestion de tontines collectives",
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Log de l'erreur complète pour le serveur
+    print("=== GLOBAL ERROR HANDLER ===")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur interne est survenue. Veuillez contacter l'administrateur (contact@ibrahima-bah.com)."},
+    )
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 if "http://localhost:5173" not in origins:

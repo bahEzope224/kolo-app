@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SignedIn, SignedOut, RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
-import api, { syncUser, setAuthTokenGetter } from "./api/client";
+import api, { syncUser, setAuthTokenGetter, setGlobalErrorHandler } from "./api/client";
 import Login       from "./pages/Login";
 import Dashboard   from "./pages/Dashboard";
 import TontineDetail from "./pages/TontineDetail";
@@ -12,6 +12,7 @@ import JoinPage    from "./pages/JoinPage";
 import AdminPage   from "./pages/AdminPage";
 import BottomNav   from "./components/BottomNav";
 import SideNav     from "./components/SideNav";
+import Toast       from "./components/Toast";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -28,7 +29,7 @@ function Protected({ children }) {
   );
 }
 
-function AppShell() {
+function AppShell({ error, onClearError }) {
   const location  = useLocation();
   const { isSignedIn } = useAuth();
   const isAuth    = isSignedIn;
@@ -58,6 +59,9 @@ function AppShell() {
 
       {/* Bottom nav mobile — en dehors du flex pour rester fixe */}
       {isAuth && !hideNav && <BottomNav />}
+
+      {/* Affichage global de l'erreur */}
+      {error && <Toast message={error} onClose={onClearError} />}
     </div>
   );
 }
@@ -79,11 +83,18 @@ function UserSync() {
 export default function App() {
   const { getToken, isSignedIn, isLoaded: authLoaded } = useAuth();
   const [apiReady, setApiReady] = useState(false);
+  const [globalError, setGlobalError] = useState(null);
 
   useEffect(() => {
     if (authLoaded) {
       // Register the token getter once Clerk is loaded
       setAuthTokenGetter(getToken);
+      
+      // Register global error handler
+      setGlobalErrorHandler((msg) => {
+        setGlobalError(msg);
+      });
+
       setApiReady(true);
     }
   }, [authLoaded, getToken]);
@@ -100,7 +111,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <UserSync />
-        <AppShell />
+        <AppShell error={globalError} onClearError={() => setGlobalError(null)} />
       </BrowserRouter>
     </QueryClientProvider>
   );

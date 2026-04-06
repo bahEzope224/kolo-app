@@ -7,9 +7,14 @@ const api = axios.create({
 });
 
 let tokenGetter = null;
+let globalErrorHandler = null;
 
 export const setAuthTokenGetter = (fn) => {
   tokenGetter = fn;
+};
+
+export const setGlobalErrorHandler = (fn) => {
+  globalErrorHandler = fn;
 };
 
 api.interceptors.request.use(async (config) => {
@@ -27,6 +32,13 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    // Gestion globale des erreurs 500 ou réseau
+    if (!err.response || err.response.status >= 500) {
+      if (globalErrorHandler) {
+        globalErrorHandler("Une erreur est survenue. Veuillez contacter l'administrateur (contact@ibrahima-bah.com) pour plus d'informations.");
+      }
+    }
+    
     if (err.response?.status === 401) {
       // Logic for 403 or 401 can go here
     }
