@@ -25,15 +25,29 @@ export default function NotificationBell() {
   const { data: notifs = [] } = useQuery({
     queryKey: ["notifs"],
     queryFn: () => getNotifications(),
-    refetchInterval: 15000, // rafraîchit toutes les 15s
+    refetchInterval: 15000,
   });
 
   const markMutation = useMutation({
     mutationFn: () => markAllRead(),
-    onSuccess: () => qc.invalidateQueries(["notifs"]),
+    // Optimistic update : marque tout comme lu dans le cache immédiatement
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["notifs"] });
+      const previous = qc.getQueryData(["notifs"]);
+      qc.setQueryData(["notifs"], (old = []) =>
+        old.map((n) => ({ ...n, is_read: true }))
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      qc.setQueryData(["notifs"], ctx.previous);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["notifs"] }),
   });
 
-  const unread = notifs.filter((n) => !n.is_read).length;
+  // Seules les notifications non lues sont affichées
+  const unread = notifs.filter((n) => !n.is_read);
+  const unreadCount = unread.length;
 
   // Ferme en cliquant ailleurs
   useEffect(() => {
@@ -46,7 +60,7 @@ export default function NotificationBell() {
 
   function handleOpen() {
     setOpen(!open);
-    if (!open && unread > 0) {
+    if (!open && unreadCount > 0) {
       setTimeout(() => markMutation.mutate(), 1500);
     }
   }
@@ -59,9 +73,9 @@ export default function NotificationBell() {
         className="relative min-h-0 p-2 bg-transparent border-none text-slate-300 hover:text-white transition"
       >
         <span style={{ fontSize: 20 }}>🔔</span>
-        {unread > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-            {unread > 9 ? "9+" : unread}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -75,7 +89,7 @@ export default function NotificationBell() {
           {/* Header panel */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <span className="font-black text-slate-800 text-sm">Notifications</span>
-            {unread > 0 && (
+            {unreadCount > 0 && (
               <button
                 onClick={() => markMutation.mutate()}
                 className="text-xs text-emerald-600 font-semibold bg-transparent border-none min-h-0 p-0"
@@ -85,20 +99,18 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Liste */}
+          {/* Liste — uniquement les non lues */}
           <div style={{ overflowY: "auto", maxHeight: 340 }}>
-            {notifs.length === 0 ? (
+            {unreadCount === 0 ? (
               <div className="text-center py-10 text-slate-400 text-sm">
-                <div className="text-3xl mb-2">🔕</div>
-                Aucune notification
+                <div className="text-3xl mb-2">🎉</div>
+                Tout est à jour !
               </div>
             ) : (
-              notifs.map((n) => (
+              unread.map((n) => (
                 <div
                   key={n.id}
-                  className={`flex gap-3 px-4 py-3 border-b border-slate-50 transition ${
-                    !n.is_read ? "bg-emerald-50" : "bg-white hover:bg-slate-50"
-                  }`}
+                  className="flex gap-3 px-4 py-3 border-b border-slate-50 bg-emerald-50 transition"
                 >
                   <span style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }}>
                     {ICONS[n.type] || "📣"}
@@ -108,9 +120,7 @@ export default function NotificationBell() {
                     <div className="text-slate-500 text-xs mt-0.5 leading-relaxed">{n.body}</div>
                     <div className="text-slate-300 text-xs mt-1">{timeAgo(n.created_at)}</div>
                   </div>
-                  {!n.is_read && (
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0 mt-1.5" />
-                  )}
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0 mt-1.5" />
                 </div>
               ))
             )}
